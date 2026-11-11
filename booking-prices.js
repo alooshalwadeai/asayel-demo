@@ -13,4 +13,19 @@ u.rholdok=async function(button){
     location.hash='#/RecMy';
   }catch(error){window.XP_HOST.toast(error.message);}finally{button.disabled=false;}
 };
-var g=u.rmycancel;g&&(u.rmycancel=function(){var t=(r.my||[]).filter((function(t){return"new"===t.status}))[0],e=g.apply(this,arguments);return t&&(r.my=(r.my||[]).filter((function(e){return e.id!==t.id})),x().then((function(e){return e.rpc("rec_cancel",{p_id:t.id})}))),e}),k(),new MutationObserver(A).observe(document.documentElement,{childList:!0,subtree:!0}),/^#\/(RecPrices|RecOrders|RecMy)$/.test(location.hash)&&c()}()}(),function(){try{var t=document.createElement("style");t.textContent=".z6evb,.z6ev{display:none!important}",document.head.appendChild(t)}catch(t){}try{localStorage.removeItem("xp-ev")}catch(t){}}();
+var cancelLocal=u.rmycancel;
+u.rmycancel=async function(button){
+  if(button?.disabled)return;
+  if(button)button.disabled=true;
+  try{
+    var cancelled=await window.AsayelVisa.cancel();
+    if(cancelled){
+      r.my=(r.my||[]).filter(order=>order.id!==cancelled.id);
+      m(R(),JSON.stringify(M().filter(id=>id!==cancelled.id)));
+      window.AsayelVisa.release(cancelled);
+      location.hash='#/RecCVs';
+      window.XP_HOST.toast('أُلغي الحجز وعادت العاملة إلى السير المتاحة.');
+    }else{cancelLocal.apply(this,arguments);}
+  }catch(error){window.XP_HOST.toast(error.message);}
+  finally{if(button)button.disabled=false;}
+};k(),new MutationObserver(A).observe(document.documentElement,{childList:!0,subtree:!0}),/^#\/(RecPrices|RecOrders|RecMy)$/.test(location.hash)&&c()}()}(),function(){try{var t=document.createElement("style");t.textContent=".z6evb,.z6ev{display:none!important}",document.head.appendChild(t)}catch(t){}try{localStorage.removeItem("xp-ev")}catch(t){}}();

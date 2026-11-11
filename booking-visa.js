@@ -68,6 +68,34 @@
     try {return JSON.parse(localStorage.getItem('z13my:'+c.ph)||'[]').filter(id=>/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)).slice(0,20);}
     catch {return [];}
   }
+  function release(h) {
+    const c=current(),u=window.XP_U;
+    if(!c||h.phone!==c.ph||!h.cancelled)return;
+    const cred=credentials(c);
+    if(cred.id!==h.id)return;
+    const holds=u?.HOLDS?.()||[];
+    const worker=u?.CANDS?.find(w=>w.n===h.worker&&w.co===h.nationality);
+    const local=worker?.hold;
+    if(local?.ph===c.ph){
+      const i=holds.indexOf(local);
+      if(i>=0)holds.splice(i,1);
+      local.st='done';delete worker.hold;worker.s='متاحة';
+    }
+    localStorage.setItem('z13my:'+c.ph,JSON.stringify(previousIds(c).filter(id=>id!==h.id)));
+    delete cred.id;localStorage.setItem(keyFor(c),JSON.stringify(cred));
+    window.XP_HOST?.reopen?.();
+  }
+  async function cancel() {
+    const c=current();if(!c)throw Error('سجّل الدخول لإلغاء حجزك');
+    const cred=credentials(c),ids=previousIds(c);
+    if(!cred.id&&ids.length){
+      const prior=await call('asayel_resume_legacy',{p_ids:ids,p_phone:c.ph,p_key:cred.key});
+      if(!prior)throw Error('تعذّر تحديد الحجز الحالي. حدّث الصفحة وأعد المحاولة.');
+      cred.id=prior.id;localStorage.setItem(keyFor(c),JSON.stringify(cred));
+    }
+    if(!cred.id)return null;
+    return call('asayel_cancel_booking',{p_id:cred.id,p_key:cred.key});
+  }
   async function load(el) {
     const mode=el.dataset.mode;
     if(mode==='customer') {
@@ -81,6 +109,7 @@
       el.h=await call('asayel_visa',{p_action:'read',p_id:cred.id,p_key:cred.key});
       const h=el.h, u=window.XP_U;
       if(!el.isConnected || current()?.ph!==c.ph)return;
+      if(h.cancelled){release(h);return;}
       if(!h.cancelled&&!h.expired&&u?.HOLDS&&u?.CANDS) {
         const i=u.CANDS.findIndex(w=>w.n===h.worker&&w.co===h.nationality);
         const holds=u.HOLDS();
@@ -100,6 +129,11 @@
     let body;
     if(mode==='customer') {
       body=customerPanel(el.h,el.choice);
+      if(location.hash==='#/RecMy') {
+        const oldCancel=document.querySelector('#app [data-act="rmycancel"]');
+        if(oldCancel)oldCancel.hidden=true;
+        if(!el.h.linked_at&&!el.h.cancelled&&!el.h.expired)body+=button('cancel','إلغاء الحجز');
+      }
       if(location.hash==='#/RecMy') {
         const card=document.querySelector('#app .kwa')?.closest('section.rcd');
         if(card)card.hidden=!el.h.visa&&!el.h.cancelled&&!el.h.expired;
@@ -130,6 +164,7 @@
     const b=e.target.closest('.av-panel [data-v]');if(!b)return;
     const el=b.closest('.av-panel'), action=b.dataset.v, id=b.closest('[data-booking]')?.dataset.booking;
     if(/^\d$/.test(action)){el.choice=action;paint(el);el.querySelector('input[name=number]')?.focus();}
+    if(action==='cancel')window.XP_U.ACT.rmycancel(b);
     if(action==='help') mutate(el,'help',el.h.id);
     if(action==='edit'){el.selected=id;paint(el);el.querySelector('input[name=number]')?.focus();}
     if(action==='link')mutate(el,'link',id);
@@ -169,7 +204,7 @@
   }
   new MutationObserver(mount).observe(document.documentElement,{childList:true,subtree:true});
   window.addEventListener('focus',()=>{const el=document.querySelector('.av-panel');if(el&&!el.busy&&!el.querySelector('input:focus'))load(el).catch(e=>message(el,e.message));});
-  window.AsayelVisa={async reserve(c,worker) {
+  window.AsayelVisa={cancel,release,async reserve(c,worker) {
     const cred=credentials(c);
     const result=await call('asayel_reserve',{p_key:cred.key,p_customer:c.name,p_phone:c.ph,p_worker:worker.n,p_nat:worker.co,p_dest:window.XP_DEST||''});
     cred.id=result.id;localStorage.setItem(keyFor(c),JSON.stringify(cred));return result;
