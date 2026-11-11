@@ -1,0 +1,116 @@
+        '<div class="xlab"><span>الضمان (' + gd + ' يومًا)</span><b class="' + (n >= 0 && n < 10 ? 'late' : '') + '">' + esc(n < 0 ? 'خارج الضمان' : remTxt(n)) + '</b></div>' + bar(Math.min(100, (gd - Math.max(n, 0)) / gd * 100), n < 0 ? 'n' : n < 10 ? 'r' : 'g') +
+        '<div class="xrow mt"><span class="mut sm">مستحقات</span><b>' + (d.amt ? fmt(d.amt) + ' ر.س' : 'مسددة') + '</b></div></article>';
+    }).join('') || '<p class="mut">لا توجد عاملات بهذا السبب</p>') + '</div>';
+  }
+  return head('سجلات الإيواء', 'ملف كامل لكل عاملة · رقم الجواز هو الرقم الموحد', meSel('shme') + btn('+ إضافة عاملة للإيواء', 'shnew') + btn('تشغيل فحص الأرشفة الآن', 'sharch', '', 'ghost')) + pend + ticker() +
+    kpis([{ l: 'في الإيواء', v: REC.length, s: 'السعة ' + CAP + ' سجلًا' }, { l: 'داخل الضمان', v: inG, tone: 'g' }, { l: 'ضمان ينتهي خلال 10 أيام', v: REC.filter(function (r) { var n = gRem(r); return n >= 0 && n < 10; }).length, tone: 'r' }, { l: 'مستحقات غير مدفوعة', v: dueAll, suf: ' ر.س', tone: 'a' }]) +
+    card('العاملات', cap + legend + body, seg);
+} };
+/* old pages now open the unified records */
+['Shelter', 'WorkerStatus'].forEach(function (k) { P[k] = { t: 'سجلات الإيواء', r: function () { try { history.replaceState(null, '', '#/ShelterRecords'); } catch (e) { } return P.ShelterRecords.r(); } }; });
+var wsI = U.NEW.indexOf('WorkerStatus'); if (wsI >= 0) U.NEW.splice(wsI, 1);
+
+P.ShelterArchive = { t: 'أرشيف الإيواء', r: function () {
+  var kinds = ['سفر', 'إصلاح', 'نقل', 'ضمان'];
+  var rows = ARCH.filter(function (a) { return a.kind === AKIND; });
+  var tabs = '<div class="xseg" role="tablist">' + kinds.map(function (k) { return '<button type="button" role="tab" data-akind="' + k + '" class="' + (k === AKIND ? 'on' : '') + '">' + k + ' <small>' + ARCH.filter(function (a) { return a.kind === k; }).length + '</small></button>'; }).join('') + '</div>';
+  return head('أرشيف الإيواء', 'كل يوم الساعة 12 منتصف الليل يجهّز البرنامج قائمة من مرّ تاريخ تذكرتها · آخر فحص: ' + esc(LASTRUN), btn('تشغيل فحص الأرشفة الآن', 'sharch')) +
+    (CAND.length ? '<div class="shpend" role="status"><div><b>⏳ ' + nW(CAND.length) + ' بانتظار تأكيد السفر</b><span>لن تنتقل للأرشيف قبل التأكيد</span></div>' + (can('arch') ? btn('مراجعة وتأكيد الأرشفة', 'shcand') : '') + '</div>' : '') +
+    '<div class="xnote">قاعدة الأرشفة: كل منتصف ليل يجهّز البرنامج قائمة العاملات اللي تاريخ تذكرتها <b>قبل اليوم</b> ولا ينقل أحدًا. المشرف يحدد من سافرت فعلًا ويضغط <b>تأكيد الأرشفة</b>، فتنتقل لأرشيف السفر ويحدد البرنامج هل سفرها <b>داخل الضمان</b> (حسب بداية الضمان ومدته في عقد مساند) أو خارجه. اللي ما سافرت تبقى في الإيواء مع تنبيه لتحديث تذكرتها. الإصلاح والنقل يُؤرشفان عند إغلاق الحالة، وأرشيف الضمان يحفظ نسخة بتاريخ بداية الضمان ونهايته.</div>' +
+    card('الأرشيف', table([
+      { l: 'العاملة', r: function (a) { return '<b>' + esc(a.rec.name) + '</b><small class="sub">جواز ' + esc(a.rec.pp) + '</small>'; } },
+      { l: 'الكفيل', r: function (a) { return esc(a.rec.sp); } }, { l: 'المكتب', r: function (a) { return esc(a.rec.off); } },
+      { l: 'تاريخ الأرشفة', r: function (a) { return dd(a.at); } },
+      { l: 'الضمان', r: function (a) { return (AKIND === 'ضمان' ? dd(gStart(a.rec)) + ' ← ' + dd(gEnd(a.rec)) + ' ' : '') + chip(a.inG ? 'داخل الضمان' : 'خارج الضمان', a.inG ? 'g' : 'n'); } },
+      { l: 'الزيارات', r: function (a) { return (a.rec.trv.visits || 1) + ' زيارة'; } },
+      { l: 'إجراء', noexp: 1, r: function (a) { return btn('استرجاع', 'shrestore', 'data-k="' + ARCH.indexOf(a) + '"', 'sm ghost'); } }
+    ], rows, { title: 'أرشيف ' + AKIND, ph: 'ابحث بالاسم أو الجواز' }), tabs);
+} };
+
+var CATS = [['', 'كل التصنيفات'], ['in', 'داخل الضمان'], ['out', 'خارج الضمان'], ['tk', 'تذاكر السفر'], ['exit', 'خروج نهائي'], ['tr', 'إجراءات النقل'], ['court', 'محكمة عمالية'], ['due', 'لديها مستحقات']];
+function catOk(r, c) { return !c || (c === 'in' && gRem(r) >= 0) || (c === 'out' && gRem(r) < 0) || (c === 'tk' && r.trv.tk) || (c === 'exit' && r.trv.exit) || (c === 'tr' && (r.st === 1 || r.st === 2)) || (c === 'court' && r.trv.court) || (c === 'due' && duesOf(r).amt > 0); }
+function repRows() { return REC.filter(function (r) { return (!RF.off || r.off === RF.off) && catOk(r, RF.cat); }); }
+P.ShelterReports = { t: 'تقارير الإيواء', r: function () {
+  var rows = repRows(), offs = Object.keys(OFFICES);
+  var f = '<div class="shf"><label>المكتب<select class="xsel" data-rf="off"><option value="">كل المكاتب</option>' + offs.map(function (o) { return '<option' + (o === RF.off ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select></label><label>التصنيف<select class="xsel" data-rf="cat">' + CATS.map(function (c) { return '<option value="' + c[0] + '"' + (c[0] === RF.cat ? ' selected' : '') + '>' + c[1] + '</option>'; }).join('') + '</select></label><div class="xrow">' + btn('طباعة A4 أفقي', 'shprint') + btn('حفظ PDF', 'shprint', 'data-pdf="1"', 'ghost') + '</div><div class="shlogo"><span class="shlogop">' + rlogo(22) + '</span><span class="mut sm">' + (LOGO ? 'شعار مرفوع' : 'شعار مؤقت') + '</span>' + (can('logo') ? '<label class="xbt sm ghost shup">🖼 تغيير الشعار<input type="file" id="replogo" accept="image/*" hidden></label>' + (LOGO ? btn('إرجاع الشعار المؤقت', 'shlogoreset', '', 'sm ghost') : '') : '') + '</div></div>';
+  var grp = {}; rows.forEach(function (r) { (grp[r.off] = grp[r.off] || []).push(r); });
+  var prev = Object.keys(grp).map(function (o) { return '<div class="shpg"><div class="shph">' + rlogo(26) + '<div><b>شركة أصايل المنصورة</b><span>تقرير الإيواء · ' + esc(o) + ' · ' + dd(iso(today())) + '</span></div><span class="shpn">' + grp[o].length + ' سجل</span></div>' + repTable(grp[o]) + '</div>'; }).join('') || '<p class="mut">لا توجد سجلات بهذه التصفية</p>';
+  return head('تقارير الإيواء', 'كل مكتب في صفحات مستقلة · A4 أفقي · بشعار الشركة فقط وبدون اسم المصمم', meSel('shme')) + card('التصفية والطباعة', f) + card('معاينة التقرير (' + rows.length + ' سجل)', '<div class="shprev">' + prev + '</div>');
+} };
+function repTable(list) {
+  return '<table class="shrt"><thead><tr><th>#</th><th>العاملة</th><th>الجواز</th><th>الجنسية</th><th>الكفيل</th><th>الجوال</th><th>الإيواء</th><th>الحالة</th><th>السبب</th><th>الضمان</th><th>المستحقات</th><th>التذكرة</th></tr></thead><tbody>' + list.map(function (r, i) {
+    var d = duesOf(r), n = gRem(r);
+    return '<tr><td>' + (i + 1) + '</td><td>' + esc(r.name) + '</td><td>' + esc(r.pp) + '</td><td>' + esc(r.nat) + '</td><td>' + esc(r.sp) + '</td><td>' + esc(r.spPh) + '</td><td>' + dd(r.shelter) + '</td><td>' + esc(ST[r.st]) + '</td><td>' + esc(r.reason || '—') + '</td><td>' + esc(n < 0 ? 'خارج الضمان' : remTxt(n)) + '</td><td>' + (d.amt ? fmt(d.amt) + ' ر.س' : '—') + '</td><td>' + (r.trv.tk ? esc(r.trv.tk) + ' · ' + dd(r.trv.tkDate) : '—') + '</td></tr>';
+  }).join('') + '</tbody></table>';
+}
+
+/* ---------- team chat + announcements ---------- */
+var MEM = ['المدير', 'الشريك', 'ماجد (المشرف)', 'هيا (الإيجار)', 'ريم (الاستقدام)', 'خالد (المحاسب)', 'سارة (خدمة العملاء)'];
+var CHAT = [
+  { u: 'ماجد (المشرف)', t: '09:12', x: 'وصلت ماريتا وديفينا من مطار نجران وهن في السكن الحين ✅' },
+  { u: 'ريم (الاستقدام)', t: '09:20', x: '@ماجد (المشرف) تم إبلاغ العملاء بالواتساب، شكرًا' },
+  { u: 'خالد (المحاسب)', t: '10:05', x: 'مرفق سند قبض مستحقات سيتي رحمة', f: { n: 'سند-قبض-4482.pdf', k: 'file' } },
+  { u: 'المدير', t: '10:30', x: '@هيا (الإيجار) لا تفتحين حجز لروز لين ينتهي إجراء الخروج' }
+];
+var ANN = [
+  { x: 'اجتماع الموظفين يوم الأحد الساعة 9 الصبح بخصوص الإيواء', at: 'أمس 18:00', f: null, sch: '', read: ['ماجد (المشرف)', 'ريم (الاستقدام)', 'خالد (المحاسب)'] },
+  { x: 'تذكير: تحديث صلاحية التذاكر قبل نهاية الشهر', at: '', f: { n: 'قائمة-التذاكر.xlsx' }, sch: 'الأحد 08:00', read: [] }
+];
+var CURU = 'المدير', PEND = null, APEND = null;
+var PERMS = [['chatarch', 'رؤية أرشيف المحادثات الممسوحة'], ['arch', 'تأكيد أرشفة السفر'], ['cap', 'تعديل سعة الإيواء'], ['logo', 'تغيير شعار التقارير']];
+var PERM = { 'الشريك': { chatarch: 1 }, 'ماجد (المشرف)': { arch: 1 } };
+function can(k, u) { u = u || CURU; return u === 'المدير' || !!(PERM[u] && PERM[u][k]); }
+function meSel(id) { return '<label class="sm">أنا: <select class="xsel shme" id="' + id + '">' + MEM.map(function (m) { return '<option' + (m === CURU ? ' selected' : '') + '>' + esc(m) + '</option>'; }).join('') + '</select></label>'; }
+function permCard() {
+  if (CURU !== 'المدير') return '';
+  return card('🔐 صلاحيات الإيواء والتواصل', '<p class="mut sm">يحددها المدير لكل موظف · المدير يملك كل الصلاحيات دائمًا</p><div class="xtw"><table class="xt shpt"><thead><tr><th>الموظف</th>' + PERMS.map(function (p) { return '<th>' + esc(p[1]) + '</th>'; }).join('') + '</tr></thead><tbody>' + MEM.filter(function (m) { return m !== 'المدير'; }).map(function (m) {
+    return '<tr><td data-l="الموظف"><b>' + esc(m) + '</b></td>' + PERMS.map(function (p) { return '<td data-l="' + esc(p[1]) + '"><label class="shpk"><input type="checkbox" data-perm="' + esc(p[0]) + '" data-u="' + esc(m) + '"' + (can(p[0], m) ? ' checked' : '') + ' aria-label="' + esc(p[1] + ' · ' + m) + '"></label></td>'; }).join('') + '</tr>';
+  }).join('') + '</tbody></table></div>');
+}
+function lastFri() { var d = today(); d.setDate(d.getDate() - ((d.getDay() - 5 + 7) % 7 || 7)); return dd(iso(d)); }
+var CHATARCH = [{ at: 'الجمعة ' + lastFri() + ' · 05:00', msgs: [
+  { u: 'ماجد (المشرف)', t: '08:40', x: 'سيتي رحمة طلبت تتواصل مع السفارة، نسقت لها موعد الأحد' },
+  { u: 'الشريك', t: '11:02', x: '@المدير راجعت تقرير الإيواء الأسبوعي، كل شي واضح 👍' },
+  { u: 'خالد (المحاسب)', t: '13:15', x: 'تم استلام مقدّم نقل هيلين تسفاي كاملًا', f: { n: 'إيصال-تحويل.pdf', k: 'file' } }
+] }];
+function nextFri() { var d = new Date(); var t = new Date(d); t.setHours(5, 0, 0, 0); var add = (5 - d.getDay() + 7) % 7; if (add === 0 && d >= t) add = 7; t.setDate(t.getDate() + add); var h = Math.round((t - d) / 36e5); return h < 48 ? 'بعد ' + h + ' ساعة' : 'بعد ' + Math.round(h / 24) + ' أيام'; }
+function chatBody(list) {
+  list = list || CHAT; if (!list.length) return '<p class="mut sm tce">لا توجد رسائل · تم مسح المحادثة</p>';
+  return list.map(function (m) {
+    var me = m.u === CURU, x = esc(m.x).replace(/@([^\s،,.]+(?: \([^)]+\))?)/g, '<span class="tm">@$1</span>');
+    var f = m.f ? (m.f.k === 'img' ? '<img src="' + m.f.u + '" alt="' + esc(m.f.n) + '" class="tci">' : '<span class="tcf">📎 ' + esc(m.f.n) + '</span>') : '';
+    return '<div class="tcm ' + (me ? 'me' : '') + '"><small>' + esc(m.u) + ' · ' + m.t + '</small>' + f + (m.x ? '<p>' + x + '</p>' : '') + '</div>';
+  }).join('');
+}
+P.TeamChat = { t: 'التواصل الداخلي', r: function () {
+  var priv = can('chatarch');
+  var chat = '<div class="xnote sm">🧹 تختفي المحادثة من شاشات الموظفين كل جمعة الساعة 5 الفجر، وتُحفظ نسخة لا يراها إلا من منحه المدير الصلاحية · المسح القادم ' + nextFri() + (CURU === 'المدير' ? ' ' + btn('محاكاة مسح الجمعة', 'tcwipe', '', 'sm ghost') : '') + '</div><div class="tcw" id="tcw">' + chatBody() + '</div>' +
+    '<div class="tcmen" id="tcmen" hidden></div><form class="tcf2" id="tcform"><label class="tcat" title="إرفاق صورة أو ملف">📎<input type="file" id="tcfile" hidden></label><input id="tcin" autocomplete="off" placeholder="اكتب رسالة… استخدم @ للإشارة لشخص" aria-label="رسالة"><button type="submit" class="xbt sm">إرسال</button></form><div id="tcpend" class="mut sm"></div>';
+  var annList = ANN.map(function (a, i) {
+    var unread = MEM.filter(function (m) { return m !== 'المدير' && a.read.indexOf(m) < 0; });
+    return '<div class="ann"><div class="xrow"><b>' + esc(a.x) + '</b>' + (a.sch ? chip('مجدول · ' + a.sch, 'a') : chip('أُرسل ' + a.at, 'g')) + '</div>' + (a.f ? '<span class="tcf">📎 ' + esc(a.f.n) + '</span>' : '') +
+      (a.sch ? '<div class="xrow mt">' + btn('إرسال الآن', 'annnow', 'data-i="' + i + '"', 'sm ghost') + '</div>' : '<div class="anr"><span class="mut sm">قرأه (' + a.read.length + '):</span>' + a.read.map(function (m) { return chip('✓✓ ' + m, 'g'); }).join('') + '<span class="mut sm">لم يقرأه (' + unread.length + '):</span>' + unread.map(function (m) { return chip(m, 'n'); }).join('') + '</div>');
+  }).join('');
+  var annForm = '<form id="annform" class="annf"><textarea id="anntx" rows="2" placeholder="نص التنويه" aria-label="نص التنويه"></textarea><div class="xrow"><label class="tcat2">📎 مرفق<input type="file" id="annfile" hidden></label><span id="annpend" class="mut sm"></span><label class="sm">جدولة لوقت لاحق <input type="datetime-local" id="annat" class="xsel"></label><button type="submit" class="xbt sm">إرسال التنويه</button></div></form>';
+  return head('التواصل الداخلي', 'محادثة الفريق والتنويهات الرسمية', meSel('tcme')) +
+    '<div class="wgrid">' + card('محادثة الفريق', chat) + card('التنويهات', annForm + annList) + '</div>' +
+    permCard() + (priv ? card('🔒 أرشيف المحادثات الممسوحة', '<p class="mut sm">يظهر للمدير ولمن منحه صلاحية «رؤية أرشيف المحادثات» فقط</p>' + (CHATARCH.map(function (a, i) { return '<details class="tca"' + (i === 0 ? ' open' : '') + '><summary><b>مسح ' + esc(a.at) + '</b> <span class="mut sm">' + a.msgs.length + ' رسالة</span></summary><div class="tcw tcwa">' + chatBody(a.msgs) + '</div></details>'; }).join('') || '<p class="mut">لا يوجد أرشيف بعد</p>')) : '');
+} };
+
+/* ---------- record drawer ---------- */
+function f(id, l, v, t, extra) { return '<label class="shfl"><span>' + l + '</span><input id="' + id + '" type="' + (t || 'text') + '" value="' + esc(v == null ? '' : v) + '" ' + (extra || '') + '></label>'; }
+function gBox(st, n) {
+  if (!st) return 'تُحسب نهاية الضمان بعد إدخال بدايته';
+  var x = { gStart: st, gDays: +n || 90, entry: st }, e = gEnd(x), rem = gRem(x);
+  return 'نهاية الضمان: <b>' + dd(e) + '</b> · ' + gChip(x);
+}
+function recForm(r, i) {
+  var isNew = i < 0;
+  var offs = Object.keys(OFFICES);
+  var d = duesOf(r);
+  return '<form id="shform" data-i="' + i + '" novalidate>' +
+    '<h3 class="xgh">البيانات الأساسية</h3><div class="shg">' +
+    f('fpp', 'رقم الجواز (الرقم الموحد)', r.pp, 'text', 'autocomplete="off" required' + (isNew ? ' placeholder="جرّب: A5520018 أو P3301876"' : '')) + '<p class="shhint" id="xlhint"></p><p class="shhint shxl">📗 ملف Excel للبحث والتعبئة فقط · المرجع الرسمي هو البرنامج</p>' +
+    f('fname', 'الاسم', r.name) + f('fnat', 'الجنسية', r.nat) + f('fsp', 'الكفيل', r.sp) + f('fspid', 'هوية الكفيل', r.spId) + f('fspph', 'جوال الكفيل', r.spPh, 'tel') +
+    '<label class="shfl"><span>المكتب</span><select id="foff" class="xsel">' + offs.map(function (o) { return '<option' + (o === r.off ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select></label>' +
+    f('fentry', 'تاريخ دخول المملكة', r.entry, 'date', 'max="' + iso(today()) + '"') + f('fshel', 'تاريخ الإيواء', r.shelter, 'date', 'max="' + iso(today()) + '"') +

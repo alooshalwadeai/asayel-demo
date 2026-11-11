@@ -1,0 +1,123 @@
+    '</div><p class="sherr" id="dterr" role="alert"></p>' +
+    '<div class="shg"><label class="shfl"><span>سبب الإيواء</span><select id="freason" class="xsel"><option value="">اختر السبب</option>' + REASONS.map(function (x) { return '<option' + (x === r.reason ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select></label><label class="shfl"><span>تفاصيل السبب</span><input id="frdet" value="' + esc(r.rdet || '') + '" placeholder="اكتب التفاصيل"></label></div><label class="shfl"><span>الملاحظات</span><input id="fnotes" value="' + esc(r.notes || '') + '"></label><label class="shfl"><span>التوجيه</span><input id="fdir" value="' + esc(r.dir || '') + '"></label>' +
+    '<h3 class="xgh">الحالة</h3><div class="shst">' + ST.map(function (s, j) { return '<label style="--c:' + STC[j] + '"><input type="radio" name="fst" value="' + j + '"' + (j === r.st ? ' checked' : '') + '>' + esc(s) + '</label>'; }).join('') + '</div>' +
+    '<h3 class="xgh">بيانات النقل</h3><div class="shg">' + f('ftfrom', 'الكفيل السابق', r.tr.from) + f('ftto', 'الكفيل الجديد', r.tr.to) + f('fttrial', 'أيام التجربة', r.tr.trial, 'number', 'min="0"') + (r.trId ? '' : f('ftcost', 'تكلفة النقل', r.tr.cost || '', 'number', 'min="0"') + f('ftdep', 'المقدّم', r.tr.dep || '', 'number', 'min="0"')) + '</div>' +
+    (r.trId ? '<div class="shdue shtr">تكلفة النقل: <b>' + fmt(r.tr.cost) + ' ر.س</b> · المقدّم: <b>' + fmt(r.tr.dep) + ' ر.س</b> · المتبقي: <b>' + fmt(Math.max(0, r.tr.cost - r.tr.dep)) + ' ر.س</b><br><span class="mut sm">مسجّلة في طلب النقل ' + esc(r.trId) + ' · للعرض فقط حتى لا تتكرر في الحسابات</span> ' + btn('تعديل في نقل الخدمات', 'shgotr', 'data-id="' + esc(r.trId) + '"', 'sm ghost') + '</div>' : '<p class="shhint">تُكتب التكلفة والمقدّم مرة واحدة هنا، وينشأ منها طلب في «نقل الخدمات» تلقائيًا عند الحفظ</p>') + '<p class="sherr" id="deperr" role="alert"></p>' +
+    '<h3 class="xgh">المستحقات</h3><div class="shg">' + f('fdrate', 'أجرة اليوم (ر.س)', r.dues.rate, 'number', 'min="0"') + f('fdpaid', 'أيام مدفوعة', r.dues.paid, 'number', 'min="0"') +
+    '<label class="shfl"><span>طريقة الدفع</span><select id="fdm" class="xsel">' + ['كاش', 'تحويل', 'كاش وتحويل'].map(function (m) { return '<option' + (m === r.dues.method ? ' selected' : '') + '>' + m + '</option>'; }).join('') + '</select></label></div>' +
+    '<div class="shdue" id="duebox">' + (r.shelter ? 'أيام غير مدفوعة: <b>' + d.days + '</b> · المستحق: <b>' + fmt(d.amt) + ' ر.س</b>' : 'يُحسب تلقائيًا بعد إدخال تاريخ الإيواء') + '</div>' +
+    '<h3 class="xgh">السفر والمحكمة</h3><div class="shg">' + f('ftk', 'رقم التذكرة', r.trv.tk) + f('ftkd', 'تاريخ التذكرة', r.trv.tkDate, 'date') + f('ftkv', 'صلاحية التذكرة', r.trv.tkValid, 'date') + f('fborder', 'رقم الحدود', r.trv.border) + f('fvis', 'عدد الزيارات', r.trv.visits, 'number', 'min="1"') +
+    '<label class="shck"><input type="checkbox" id="fexit"' + (r.trv.exit ? ' checked' : '') + '> خروج نهائي</label><label class="shck"><input type="checkbox" id="fcourt"' + (r.trv.court ? ' checked' : '') + '> محكمة عمالية</label></div>' +
+    '<h3 class="xgh">المرفقات <small class="mut">تخزين خاص · لا يراها إلا المصرّح لهم</small></h3><div id="attl">' + attHTML(r) + '</div><label class="xbt sm ghost shup">+ رفع مرفق<input type="file" id="fatt" multiple hidden></label>' +
+    '<h3 class="xgh">الضمان <small class="mut">حسب عقد مساند</small></h3><div class="shg">' + f('fgs', 'بداية الضمان (حسب مساند)', r.gStart || r.entry, 'date') + f('fgd', 'مدة الضمان بالأيام', gDays(r), 'number', 'min="1" max="365"') + '</div><div class="shdue" id="gbox">' + gBox(r.gStart || r.entry, gDays(r)) + '</div>' +
+    '<div class="xrow mt shbar">' + '<button type="submit" class="xbt">' + (isNew ? 'إضافة السجل' : 'حفظ التعديلات') + '</button>' + (isNew ? '' : btn('أرشفة', 'shmanarch', 'data-i="' + i + '"', 'ghost')) + '</div></form>';
+}
+var DRAFT = null;
+function attHTML(r) { return (r.att.length ? r.att.map(function (a) { return '<span class="tcf">🔒 ' + esc(a) + '</span>'; }).join('') : '<span class="mut sm">لا توجد مرفقات</span>'); }
+function openRec(i) { DRAFT = i < 0 ? mk({ off: Object.keys(OFFICES)[0], st: 0, entry: '', shelter: iso(today()) }) : REC[i]; drawer(i < 0 ? 'إضافة عاملة للإيواء' : 'ملف ' + DRAFT.name, recForm(DRAFT, i)); var w = document.querySelector('#xdr aside'); if (w) w.classList.add('wide'); }
+function val(id) { var e = document.getElementById(id); return e ? (e.type === 'checkbox' ? e.checked : e.value.trim()) : ''; }
+function checkDates() {
+  var en = val('fentry'), sh = val('fshel'), t = iso(today()), err = '';
+  if (en && en > t) err = 'تاريخ الدخول لا يمكن أن يكون في المستقبل';
+  else if (sh && sh > t) err = 'تاريخ الإيواء لا يمكن أن يكون في المستقبل';
+  else if (en && sh && sh < en) err = 'تاريخ الإيواء لا يمكن أن يسبق تاريخ دخول المملكة';
+  var e = document.getElementById('dterr'); if (e) e.textContent = err; return !err;
+}
+function checkDep() {
+  var c = +val('ftcost') || 0, d = +val('ftdep') || 0, err = d > c ? 'المقدّم (' + fmt(d) + ') أكبر من تكلفة النقل (' + fmt(c) + ')' : '';
+  var e = document.getElementById('deperr'); if (e) e.textContent = err; return !err;
+}
+function liveDue() {
+  var sh = val('fshel'), b = document.getElementById('duebox'); if (!b || !sh) return;
+  var dd2 = Math.max(0, days(sh, iso(today())) - (+val('fdpaid') || 0)), amt = dd2 * (+val('fdrate') || 0);
+  b.innerHTML = 'أيام غير مدفوعة: <b>' + dd2 + '</b> · المستحق: <b>' + fmt(amt) + ' ر.س</b> · ' + esc(val('fdm'));
+}
+function xlLookup() {
+  var pp = val('fpp').toUpperCase(), h = document.getElementById('xlhint'); if (!h) return;
+  var hit = null, sheet = '';
+  Object.keys(EXCEL).forEach(function (s) { EXCEL[s].forEach(function (r) { if (r.pp === pp) { hit = r; sheet = s; } }); });
+  var dup = REC.filter(function (r) { return r.pp === pp && r !== DRAFT; })[0];
+  if (dup) { h.innerHTML = '⚠ هذا الجواز مسجّل في الإيواء: ' + esc(dup.name); h.className = 'shhint bad'; return; }
+  if (!hit) { h.textContent = pp.length >= 6 ? 'غير موجود في ملف Excel · عبّئ البيانات يدويًا' : ''; h.className = 'shhint'; return; }
+  [['fname', hit.name], ['fnat', hit.nat], ['fsp', hit.sp], ['fspid', hit.spId], ['fspph', hit.spPh], ['fentry', hit.entry]].forEach(function (p) { var e = document.getElementById(p[0]); if (e) { e.value = p[1]; e.classList.add('filled'); } });
+  var o = document.getElementById('foff'); if (o) o.value = sheet;
+  h.innerHTML = '✓ تعبأت البيانات من ملف Excel · ورقة «' + esc(sheet) + '»'; h.className = 'shhint ok'; syncG(); checkDates();
+}
+function syncG() { var g = document.getElementById('fgs'); if (g && !g.dataset.touched) g.value = val('fentry'); liveG(); }
+function liveG() { var b = document.getElementById('gbox'); if (b) b.innerHTML = gBox(val('fgs') || val('fentry'), val('fgd')); }
+function saveRec(form) {
+  var i = +form.dataset.i, okD = checkDates(), okP = checkDep();
+  var pp = val('fpp').toUpperCase(), name = val('fname');
+  if (!pp || !name || !val('fentry') || !val('fshel')) { toast('أكمل الجواز والاسم وتاريخ الدخول وتاريخ الإيواء'); return; }
+  if (!okD || !okP) { toast('صحّح الأخطاء الظاهرة باللون الأحمر'); return; }
+  if (!val('freason')) { toast('اختر سبب الإيواء'); return; }
+  var gdv = +val('fgd'); if (!(gdv >= 1 && gdv <= 365)) { toast('مدة الضمان لازم تكون بين 1 و365 يومًا'); return; }
+  if (i < 0 && REC.length >= CAP) { toast('السعة ممتلئة (' + CAP + ' سجلًا) · أرشف سجلًا أولًا'); return; }
+  var r = DRAFT, before = i < 0 ? '—' : ST[r.st];
+  Object.assign(r, { pp: pp, name: name, nat: val('fnat'), sp: val('fsp'), spId: val('fspid'), spPh: val('fspph'), off: val('foff'), entry: val('fentry'), shelter: val('fshel'), reason: val('freason'), rdet: val('frdet'), gStart: val('fgs') || val('fentry'), gDays: gdv, notes: val('fnotes'), dir: val('fdir'), st: +((document.querySelector('input[name=fst]:checked') || {}).value || 0) });
+  var oldTk = r.trv.tkDate;
+  Object.assign(r.tr, { from: val('ftfrom'), to: val('ftto'), trial: +val('fttrial') || 0 });
+  if (!r.trId) Object.assign(r.tr, { cost: +val('ftcost') || 0, dep: +val('ftdep') || 0 });
+  Object.assign(r.dues, { rate: +val('fdrate') || 0, paid: +val('fdpaid') || 0, method: val('fdm') });
+  Object.assign(r.trv, { tk: val('ftk'), tkDate: val('ftkd'), tkValid: val('ftkv'), border: val('fborder'), visits: +val('fvis') || 1, exit: val('fexit') ? 1 : 0, court: val('fcourt') ? 1 : 0 });
+  if (r.tkStale && r.trv.tkDate !== oldTk) r.tkStale = 0;
+  var trMsg = '', tx = trOf(r);
+  if (tx) { tx.w = r.name; tx.from = r.tr.from || r.sp; tx.to = r.tr.to || 'لم يُحدد بعد'; }
+  else if (r.tr.cost > 0) { tx = mkTrans(r); trMsg = ' · وأُنشئ طلب النقل ' + tx.id; log('إضافة', 'نقل الخدمات', 'طلب ' + tx.id + ' من سجل الإيواء · ' + r.name, '—', 'التكلفة ' + fmt(r.tr.cost) + ' · المقدّم ' + fmt(r.tr.dep), r.tr.dep); }
+  if (i < 0) { REC.unshift(r); log('إضافة', 'سجلات الإيواء', 'إيواء ' + r.name + ' · جواز ' + r.pp + ' · ' + r.reason, '—', ST[r.st]); toast('أُضيفت ' + r.name + ' للإيواء' + trMsg); }
+  else { log('تعديل', 'سجلات الإيواء', 'ملف ' + r.name + ' · جواز ' + r.pp, before, ST[r.st]); toast('حُفظ ملف ' + r.name + trMsg); }
+  scan();
+  closeDr(); rerender();
+}
+function runArchive(manual) {
+  scan(); LASTRUN = manual ? 'الآن · يدويًا' : LASTRUN;
+  log('إضافة', 'أرشيف الإيواء', 'فحص الأرشفة (منتصف الليل)', '—', CAND.length ? nW(CAND.length) + ' بانتظار التأكيد' : 'لا يوجد');
+  if (CAND.length) { rerender(); if (can('arch')) openCand(); else toast(nW(CAND.length) + ' بانتظار تأكيد صاحب الصلاحية'); } else { toast('لا توجد عاملات مرّ تاريخ تذكرتها · لا شيء للأرشفة'); rerender(); }
+}
+function openCand() {
+  scan(); if (!CAND.length) { toast('لا توجد عاملات بانتظار التأكيد'); return; }
+  drawer('تأكيد سفر العاملات', '<p class="mut">حدد العاملات اللي سافرن فعلًا. المحددات فقط ينتقلن لأرشيف السفر، والباقيات يبقين في الإيواء مع تنبيه لتحديث التذكرة.</p><div class="shcl">' + CAND.map(function (r, i) {
+    var inG = r.trv.tkDate <= gEnd(r);
+    return '<label class="shcli"><input type="checkbox" name="shc" value="' + i + '"><span><b>' + esc(r.name) + '</b><small class="sub">جواز ' + esc(r.pp) + ' · ' + esc(r.off) + '</small><small class="sub">تذكرة ' + esc(r.trv.tk || '—') + ' · ' + dd(r.trv.tkDate) + '</small></span>' + chip(inG ? 'سفر داخل الضمان' : 'سفر خارج الضمان', inG ? 'g' : 'n') + '</label>';
+  }).join('') + '</div><div class="xrow mt shbar">' + btn('تأكيد الأرشفة', 'shconf') + '<button type="button" class="xbt ghost" data-close>لاحقًا</button></div>');
+}
+function printRep(pdf) {
+  var rows = repRows(), grp = {}; rows.forEach(function (r) { (grp[r.off] = grp[r.off] || []).push(r); });
+  var cat = CATS.filter(function (c) { return c[0] === RF.cat; })[0][1];
+  var css = '@page{size:A4 landscape;margin:12mm}body{font-family:"IBM Plex Sans Arabic",Tahoma,sans-serif;color:#1F2A24;margin:0}.pg{page-break-after:always}.pg:last-child{page-break-after:auto}.h{display:flex;align-items:center;gap:12px;border-bottom:2px solid #1F6B4F;padding-bottom:8px;margin-bottom:10px}.h b{font-size:18px}.h span{display:block;font-size:12px;color:#4A5650}.n{margin-inline-start:auto;font-size:12px}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#1F6B4F;color:#fff;padding:6px;text-align:right}td{padding:5px 6px;border-bottom:1px solid #ddd}tr:nth-child(even) td{background:#F7F3EA}.f{margin-top:12px;font-size:10px;color:#777;display:flex;justify-content:space-between}';
+  var html = '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>تقرير الإيواء</title><style>' + css + '</style></head><body>' + Object.keys(grp).map(function (o) {
+    return '<section class="pg"><div class="h">' + rlogo(36) + '<div><b>شركة أصايل المنصورة · تقرير الإيواء</b><span>' + esc(o) + ' · هاتف المكتب ' + esc(OFFICES[o]) + ' · التصنيف: ' + esc(cat) + ' · ' + dd(iso(today())) + '</span></div><span class="n">عدد السجلات: ' + grp[o].length + '</span></div>' + repTable(grp[o]).replace('class="shrt"', '') + '<div class="f"><span>توقيع المشرف: ............</span><span>توقيع المدير: ............</span></div></section>';
+  }).join('') + '</body></html>';
+  if (!rows.length) { toast('لا توجد سجلات للطباعة'); return; }
+  var fr = document.createElement('iframe'); fr.style.cssText = 'position:fixed;width:0;height:0;border:0;left:-9999px'; document.body.appendChild(fr);
+  fr.contentDocument.open(); fr.contentDocument.write(html); fr.contentDocument.close();
+  if (pdf) toast('اختر «حفظ كـ PDF» من نافذة الطباعة');
+  setTimeout(function () { fr.contentWindow.focus(); fr.contentWindow.print(); setTimeout(function () { fr.remove(); }, 1500); }, 300);
+}
+
+/* ---------- actions ---------- */
+ACT.shnew = function () { if (REC.length >= CAP) { toast('السعة ممتلئة (' + CAP + ' سجلًا) · أرشف سجلًا أولًا'); return; } openRec(-1); };
+ACT.shopen = function (t) { var r = VIS[+t.dataset.i]; if (r) openRec(REC.indexOf(r)); };
+ACT.sharch = function () { runArchive(1); };
+ACT.shcand = function () { if (!can('arch')) { toast('ليست لديك صلاحية تأكيد الأرشفة'); return; } openCand(); };
+ACT.shconf = function () {
+  if (!can('arch')) { toast('ليست لديك صلاحية تأكيد الأرشفة'); return; }
+  var on = Array.prototype.map.call(document.querySelectorAll('#xdr input[name=shc]:checked'), function (c) { return CAND[+c.value]; });
+  var off = CAND.filter(function (r) { return on.indexOf(r) < 0; }), t = iso(today()), names = [];
+  on.forEach(function (r) { var inG = r.trv.tkDate <= gEnd(r) ? 1 : 0; ARCH.unshift({ kind: 'سفر', at: t, inG: inG, rec: r }); ARCH.unshift({ kind: 'ضمان', at: t, inG: inG, rec: JSON.parse(JSON.stringify(r)) }); REC.splice(REC.indexOf(r), 1); names.push(r.name); log('إضافة', 'أرشيف الإيواء', 'تأكيد سفر ' + r.name + ' · ' + (inG ? 'داخل الضمان' : 'خارج الضمان'), ST[r.st], 'أرشيف السفر'); });
+  off.forEach(function (r) { r.tkStale = 1; log('تعديل', 'سجلات الإيواء', 'لم تسافر ' + r.name + ' · مطلوب تحديث التذكرة', 'بانتظار التأكيد', 'في الإيواء'); });
+  scan(); closeDr();
+  toast((names.length ? 'أُرشفت: ' + names.join('، ') : 'لم تُؤرشف أي عاملة') + (off.length ? ' · بقيت ' + off.map(function (r) { return r.name; }).join('، ') + ' في الإيواء، حدّث تذكرتها' : ''));
+  rerender();
+};
+ACT.shgotr = function (t) {
+  var x = TRANS.filter(function (y) { return y.id === t.dataset.id; })[0]; if (!x) return; closeDr(); location.hash = '#/Transfer';
+  setTimeout(function () { ACT.trans({ dataset: { i: String(TRANS.indexOf(x)) } }); }, 350);
+};
+ACT.tcwipe = function () {
+  if (CURU !== 'المدير') return;
+  if (!CHAT.length) { toast('المحادثة فارغة · لا شيء للمسح'); return; }
+  var n = CHAT.length, d = new Date(); CHATARCH.unshift({ at: 'محاكاة ' + dd(iso(d)) + ' · ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2), msgs: CHAT.splice(0, CHAT.length) });
+  log('حذف', 'التواصل الداخلي', 'مسح الجمعة التلقائي للمحادثة', n + ' رسالة', 'محفوظة لأصحاب الصلاحية'); toast('اختفت ' + n + ' رسالة من شاشات الموظفين · النسخة في الأرشيف الخاص'); rerender();
+};
+ACT.shlogoreset = function () { LOGO = null; try { localStorage.removeItem('asayel-replogo'); } catch (e) { } toast('رجع الشعار المؤقت'); rerender(); };

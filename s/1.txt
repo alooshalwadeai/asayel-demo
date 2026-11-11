@@ -1,0 +1,122 @@
+(function () {
+'use strict';
+var U = window.XP_U; if (!U) return;
+var P = U.P, ACT = U.ACT, esc = U.esc, fmt = U.fmt, chip = U.chip, btn = U.btn, card = U.card, head = U.head, kpis = U.kpis, table = U.table, bar = U.bar, drawer = U.drawer, kv = U.kv, log = U.log;
+function toast(m) { U.toast(m); }
+function rerender() { var h = window.XP_HOST || {}; if (h.reopen) h.reopen(); }
+function closeDr() { var d = document.getElementById('xdr'); if (d) d.classList.remove('show'); }
+
+/* ---------- dates ---------- */
+var DAY = 864e5;
+function today() { var d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+function ago(n) { return iso(new Date(today().getTime() - n * DAY)); }
+function iso(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function pd(s) { if (!s) return null; var p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+function dd(s) { var d = pd(s); return d ? ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear() : '—'; }
+function days(a, b) { return Math.round((pd(b) - pd(a)) / DAY); }
+function gDays(r) { return r.gDays > 0 ? +r.gDays : 90; }
+function gStart(r) { return r.gStart || r.entry; }
+function gEnd(r) { return iso(new Date(pd(gStart(r)).getTime() + gDays(r) * DAY)); }
+function nW(n) { return n === 1 ? 'عاملة واحدة' : n === 2 ? 'عاملتان' : n <= 10 ? n + ' عاملات' : n + ' عاملة'; }
+function gRem(r) { return days(iso(today()), gEnd(r)); }
+function remTxt(n) { return n < 0 ? 'انتهى منذ ' + (-n) + ' يومًا' : n === 0 ? 'آخر يوم' : n === 1 ? 'متبقي يوم واحد' : n === 2 ? 'متبقي يومان' : n <= 10 ? 'متبقي ' + n + ' أيام' : 'متبقي ' + n + ' يومًا'; }
+
+/* ---------- data ---------- */
+var CAP = 30;
+var REASONS = ['نزاع', 'رفض عمل', 'عدم دفع راتب', 'هروب', 'رغبة في نقل الكفالة', 'مرض', 'انتهاء العقد', 'أخرى'];
+var TRANS = U.TRANS || [], TSTEPS = U.TSTEPS || [];
+var ST = ['في الإيواء', 'ترغب في تجربة النقل', 'تحت إجراءات النقل', 'تحت إجراءات الخروج من المملكة', 'للإصلاح والعودة إلى الكفيل'];
+var STT = ['b', 'p', 'a', 'r', 'g'];
+var STC = ['#3B6FB0', '#7A4FB3', '#D98A2B', '#C0392B', '#1F6B4F'];
+var OFFICES = { 'مكتب أصايل المنصورة': '017•••4410', 'مكتب الوادي للاستقدام': '017•••2286', 'مكتب نجران الأول': '017•••7731' };
+var EXCEL = {
+  'مكتب أصايل المنصورة': [
+    { pp: 'P8841207', name: 'ماريا سانتوس', nat: 'الفلبين', sp: 'سعيد آل هتيلة', spId: '10•••••391', spPh: '05•••••309', entry: ago(40) },
+    { pp: 'C4471820', name: 'سيتي رحمة', nat: 'إندونيسيا', sp: 'حمد آل عباس', spId: '10•••••718', spPh: '05•••••875', entry: ago(84) },
+    { pp: 'A5520018', name: 'أنجلينا موتوا', nat: 'كينيا', sp: 'عبدالرحمن آل حيدر', spId: '10•••••662', spPh: '05•••••214', entry: ago(83) },
+    { pp: 'K0098812', name: 'جوي أكينيي', nat: 'كينيا', sp: 'منيرة الصقور', spId: '10•••••504', spPh: '05•••••660', entry: ago(120) }
+  ],
+  'مكتب الوادي للاستقدام': [
+    { pp: 'N2219004', name: 'ميرا بيريرا', nat: 'سريلانكا', sp: 'هادي اليامي', spId: '10•••••882', spPh: '05•••••738', entry: ago(25) },
+    { pp: 'U7700315', name: 'روز نامولي', nat: 'أوغندا', sp: 'جابر آل قريع', spId: '10•••••219', spPh: '05•••••590', entry: ago(89) }
+  ],
+  'مكتب نجران الأول': [
+    { pp: 'P3301876', name: 'لوسي دلا كروز', nat: 'الفلبين', sp: 'نورة آل منصور', spId: '10•••••147', spPh: '05•••••651', entry: ago(30) },
+    { pp: 'E5530671', name: 'هيلين تسفاي', nat: 'إثيوبيا', sp: 'علي آل مريح', spId: '10•••••456', spPh: '05•••••127', entry: ago(60) }
+  ]
+};
+function blank() { return { gStart: '', gDays: 90, reason: '', rdet: '', trId: '', tkStale: 0, tr: { from: '', to: '', trial: 0, cost: 0, dep: 0 }, dues: { rate: 50, paid: 0, method: 'كاش' }, trv: { tk: '', tkDate: '', tkValid: '', exit: 0, court: 0, border: '', visits: 1 }, att: [] }; }
+function mk(o) { var r = blank(); Object.keys(o).forEach(function (k) { if (typeof o[k] === 'object' && !Array.isArray(o[k]) && r[k]) Object.assign(r[k], o[k]); else r[k] = o[k]; }); r.id = 'S' + (++SEQ); return r; }
+var SEQ = 0;
+var REC = [
+  mk({ pp: 'P8841207', name: 'ماريا سانتوس', nat: 'الفلبين', sp: 'سعيد آل هتيلة', spId: '10•••••391', spPh: '05•••••309', off: 'مكتب أصايل المنصورة', entry: ago(40), shelter: ago(9), reason: 'نزاع', rdet: 'خلاف مع أسرة الكفيل على ساعات العمل', notes: 'هادئة ومتعاونة', dir: 'محاولة إصلاح وعودة للكفيل بعد جلسة صلح', st: 4, dues: { rate: 50, paid: 4, method: 'كاش' } }),
+  mk({ pp: 'C4471820', name: 'سيتي رحمة', nat: 'إندونيسيا', sp: 'حمد آل عباس', spId: '10•••••718', spPh: '05•••••875', off: 'مكتب أصايل المنصورة', entry: ago(84), shelter: ago(12), reason: 'رغبة في نقل الكفالة', rdet: 'ترغب في تغيير الكفيل', gStart: ago(80), dir: 'عرضها على كفيل جديد للتجربة', st: 1, tr: { from: 'حمد آل عباس', to: 'ناصر الصقور', trial: 5, cost: 6000, dep: 2000 }, dues: { rate: 50, paid: 0, method: 'تحويل' } }),
+  mk({ pp: 'U7700315', name: 'روز نامولي', nat: 'أوغندا', sp: 'جابر آل قريع', spId: '10•••••219', spPh: '05•••••590', off: 'مكتب الوادي للاستقدام', entry: ago(89), shelter: ago(20), reason: 'رفض عمل', rdet: '', dir: 'إجراءات خروج نهائي', st: 3, dues: { rate: 50, paid: 10, method: 'كاش وتحويل' }, trv: { tk: 'ET 405', tkDate: iso(new Date(today().getTime() + 3 * DAY)), tkValid: iso(new Date(today().getTime() + 30 * DAY)), exit: 1, court: 0, border: '30•••••128', visits: 1 } }),
+  mk({ pp: 'K0098812', name: 'جوي أكينيي', nat: 'كينيا', sp: 'منيرة الصقور', spId: '10•••••504', spPh: '05•••••660', off: 'مكتب أصايل المنصورة', entry: ago(120), shelter: ago(30), reason: 'عدم دفع راتب', rdet: 'لم يُصرف راتب شهرين', dir: 'رفع قضية في المحكمة العمالية', st: 3, dues: { rate: 50, paid: 15, method: 'تحويل' }, trv: { tk: '', tkDate: '', tkValid: '', exit: 0, court: 1, border: '30•••••771', visits: 2 } }),
+  mk({ pp: 'N2219004', name: 'ميرا بيريرا', nat: 'سريلانكا', sp: 'هادي اليامي', spId: '10•••••882', spPh: '05•••••738', off: 'مكتب الوادي للاستقدام', entry: ago(25), shelter: ago(4), reason: 'مرض', rdet: 'تحتاج متابعة طبية', dir: 'متابعة طبية ثم قرار', st: 0, dues: { rate: 50, paid: 0, method: 'كاش' } }),
+  mk({ pp: 'E5530671', name: 'هيلين تسفاي', nat: 'إثيوبيا', sp: 'علي آل مريح', spId: '10•••••456', spPh: '05•••••127', off: 'مكتب نجران الأول', entry: ago(81), shelter: ago(15), reason: 'رغبة في نقل الكفالة', rdet: 'ترغب في النقل لكفيل آخر', dir: 'نقل كفالة', st: 2, tr: { from: 'علي آل مريح', to: 'فهد آل منصور', trial: 7, cost: 5000, dep: 5000 }, dues: { rate: 50, paid: 7, method: 'تحويل' } }),
+  mk({ pp: 'S6612390', name: 'شاني ديلروكشي', nat: 'سريلانكا', sp: 'محمد آل سعيد', spId: '10•••••903', spPh: '05•••••984', off: 'مكتب أصايل المنصورة', entry: ago(88), shelter: ago(6), reason: 'نزاع', rdet: 'خلاف على الإجازة', dir: 'إصلاح وعودة', st: 4, dues: { rate: 50, paid: 6, method: 'كاش' } }),
+  mk({ pp: 'B3310457', name: 'روكسانا بيغم', nat: 'بنغلاديش', sp: 'سالم الوادعي', spId: '10•••••233', spPh: '05•••••233', off: 'مكتب نجران الأول', entry: ago(150), shelter: ago(45), reason: 'انتهاء العقد', rdet: 'ترغب بالسفر', dir: 'خروج نهائي', st: 3, dues: { rate: 50, paid: 30, method: 'كاش' }, trv: { tk: 'BG 340', tkDate: ago(1), tkValid: ago(-20), exit: 1, court: 0, border: '30•••••502', visits: 1 } }),
+  mk({ pp: 'D4418230', name: 'فاطمة أكتر', nat: 'بنغلاديش', sp: 'مانع آل سدران', spId: '10•••••615', spPh: '05•••••442', off: 'مكتب الوادي للاستقدام', entry: ago(70), shelter: ago(18), reason: 'هروب', rdet: 'أُعيدت عن طريق الجهات المختصة', dir: 'خروج نهائي', st: 3, dues: { rate: 50, paid: 18, method: 'تحويل' }, trv: { tk: 'BS 318', tkDate: ago(2), tkValid: ago(-25), exit: 1, court: 0, border: '30•••••866', visits: 1 } })
+];
+var ARCH = [
+  { kind: 'سفر', at: ago(12), inG: 0, rec: mk({ pp: 'P1029334', name: 'آنا ريس', nat: 'الفلبين', sp: 'نورة آل منصور', spPh: '05•••••651', off: 'مكتب أصايل المنصورة', entry: ago(140), shelter: ago(40), st: 3, trv: { tk: 'PR 655', tkDate: ago(12), exit: 1, visits: 1 } }) },
+  { kind: 'إصلاح', at: ago(20), inG: 1, rec: mk({ pp: 'C9981220', name: 'ديوي لستاري', nat: 'إندونيسيا', sp: 'عبدالله اليامي', spPh: '05•••••118', off: 'مكتب الوادي للاستقدام', entry: ago(60), shelter: ago(26), st: 4 }) },
+  { kind: 'نقل', at: ago(33), inG: 1, rec: mk({ pp: 'K7712004', name: 'فيث وانجيرو', nat: 'كينيا', sp: 'منى اليامي', spPh: '05•••••462', off: 'مكتب أصايل المنصورة', entry: ago(70), shelter: ago(45), st: 2, tr: { from: 'منى اليامي', to: 'سعيد آل هتيلة', trial: 5, cost: 5500, dep: 2500 } }) },
+  { kind: 'ضمان', at: ago(5), inG: 1, rec: mk({ pp: 'S6612390', name: 'شاني ديلروكشي', nat: 'سريلانكا', sp: 'محمد آل سعيد', spPh: '05•••••984', off: 'مكتب أصايل المنصورة', entry: ago(88), shelter: ago(6), st: 4 }) }
+];
+var LASTRUN = 'اليوم 00:00';
+var VIEW = 'table', AKIND = 'سفر', RF = { off: '', cat: '' }, RSNF = '', VIS = [], CAND = [];
+var LOGO = null; try { LOGO = localStorage.getItem('asayel-replogo'); } catch (e) { LOGO = null; }
+function rlogo(sz) { return LOGO ? '<img src="' + LOGO + '" alt="شعار المكتب" style="height:' + Math.round(sz * 1.18) + 'px;width:auto;max-width:' + sz * 3 + 'px;object-fit:contain">' : U.logo(sz); }
+
+/* midnight scan: prepares candidates only, never moves anyone */
+function scan() { var t = iso(today()); CAND = REC.filter(function (r) { return r.trv.tkDate && r.trv.tkDate < t && !r.tkStale; }); return CAND; }
+scan();
+
+/* transfer link: cost and deposit are written once and create a request in نقل الخدمات */
+function nextTrId() { var n = TRANS.reduce(function (a, t) { var k = +String(t.id).replace(/\D/g, ''); return k > a ? k : a; }, 0); return 'ن-' + (n + 1); }
+function mkTrans(r) {
+  var x = { id: nextTrId(), w: r.name, from: r.tr.from || r.sp || 'مكتب أصايل (إيواء)', to: r.tr.to || 'لم يُحدد بعد', st: 0, fee: 0, of: r.tr.cost, cost: r.tr.cost, dep: r.tr.dep, paid: r.tr.dep >= r.tr.cost ? 1 : 0, src: 'الإيواء' };
+  TRANS.unshift(x); r.trId = x.id; return x;
+}
+function trOf(r) { return r.trId ? TRANS.filter(function (t) { return t.id === r.trId; })[0] : null; }
+REC.forEach(function (r) { if (r.tr.cost > 0) mkTrans(r); });
+function duesOf(r) { var d = Math.max(0, days(r.shelter, iso(today())) - (r.dues.paid || 0)); return { days: d, amt: d * (r.dues.rate || 0) }; }
+function gChip(r) { var n = gRem(r); return n < 0 ? chip('خارج الضمان', 'n') : chip(n <= 10 ? remTxt(n) : 'داخل الضمان', n <= 10 ? 'r' : 'g'); }
+
+/* ---------- ticker ---------- */
+function ticker() {
+  var list = REC.filter(function (r) { var n = gRem(r); return n >= 0 && n < 10; }).sort(function (a, b) { return gRem(a) - gRem(b); });
+  if (!list.length) return '';
+  var items = list.map(function (r) { return '<span class="tki"><b>' + esc(remTxt(gRem(r))) + '</b> · ' + esc(r.name) + ' · الكفيل ' + esc(r.sp) + ' · ' + esc(r.spPh) + ' · ' + esc(r.off) + ' · جواز ' + esc(r.pp) + '</span>'; }).join('');
+  return '<div class="tk" role="marquee" aria-label="تنبيه الضمان"><span class="tkl">⚠ ضمان ينتهي قريبًا · ' + list.length + '</span><div class="tkw"><div class="tkm">' + items + items + '</div></div></div>';
+}
+
+/* ---------- pages ---------- */
+P.ShelterRecords = { t: 'سجلات الإيواء', r: function () {
+  var inG = REC.filter(function (r) { return gRem(r) >= 0; }).length, dueAll = REC.reduce(function (a, r) { return a + duesOf(r).amt; }, 0);
+  VIS = REC.filter(function (r) { return !RSNF || r.reason === RSNF; });
+  var counts = ST.map(function (_, i) { return VIS.filter(function (r) { return r.st === i; }).length; });
+  var legend = '<div class="shlg">' + ST.map(function (s, i) { return '<span><i style="background:' + STC[i] + '"></i>' + esc(s) + ' <b>' + counts[i] + '</b></span>'; }).join('') + '</div>';
+  var cap = '<div class="shcap"><div class="xrow"><b>السعة</b><span>' + REC.length + ' من ' + CAP + ' سجلًا</span>' + (can('cap') ? '<label class="shcapin">السعة القصوى <input type="number" id="shcapin" class="xsel" min="' + Math.max(1, REC.length) + '" max="500" value="' + CAP + '" aria-label="السعة القصوى"><small class="mut">حسب صلاحيات المدير</small></label>' : '') + '</div>' + bar(REC.length / CAP * 100, REC.length >= CAP ? 'r' : REC.length > CAP * 0.8 ? 'a' : 'g') + '</div>';
+  var rsn = '<label class="shrsn">السبب <select class="xsel" id="shrsnf"><option value="">كل الأسباب</option>' + REASONS.map(function (x) { var c = REC.filter(function (r) { return r.reason === x; }).length; return '<option value="' + esc(x) + '"' + (x === RSNF ? ' selected' : '') + '>' + esc(x) + ' (' + c + ')</option>'; }).join('') + '</select></label>';
+  var seg = '<div class="xrow">' + rsn + '<div class="xseg" role="group" aria-label="طريقة العرض"><button type="button" data-shview="table" class="' + (VIEW === 'table' ? 'on' : '') + '">جدول</button><button type="button" data-shview="cards" class="' + (VIEW === 'cards' ? 'on' : '') + '">بطاقات</button></div></div>';
+  var pend = CAND.length ? '<div class="shpend" role="status"><div><b>⏳ ' + nW(CAND.length) + ' بانتظار تأكيد السفر</b><span>جهّزها فحص منتصف الليل لأن تاريخ تذكرتها مضى · لا تنتقل للأرشيف إلا بعد التأكيد</span></div>' + (can('arch') ? btn('مراجعة وتأكيد الأرشفة', 'shcand') : '<span class="mut sm">التأكيد لمن لديه صلاحية «تأكيد أرشفة السفر»</span>') + '</div>' : '';
+  var body;
+  if (VIEW === 'table') {
+    body = table([
+      { l: 'العاملة', r: function (r) { return '<b>' + esc(r.name) + '</b><small class="sub">' + esc(r.nat) + ' · جواز ' + esc(r.pp) + '</small>'; } },
+      { l: 'الكفيل', r: function (r) { return esc(r.sp) + '<small class="sub">' + esc(r.spPh) + '</small>'; } },
+      { l: 'المكتب', k: 'off' },
+      { l: 'الحالة', r: function (r) { return chip(ST[r.st], STT[r.st]); } },
+      { l: 'السبب', r: function (r) { return r.reason ? '<b>' + esc(r.reason) + '</b>' + (r.rdet ? '<small class="sub">' + esc(r.rdet) + '</small>' : '') : '—'; } },
+      { l: 'الإيواء', r: function (r) { return dd(r.shelter) + '<small class="sub">' + days(r.shelter, iso(today())) + ' يومًا</small>'; } },
+      { l: 'الضمان', r: function (r) { return gChip(r); } },
+      { l: 'المستحقات', r: function (r) { var d = duesOf(r); return d.amt ? '<b>' + fmt(d.amt) + ' ر.س</b><small class="sub">' + d.days + ' يومًا غير مدفوعة</small>' : chip('مسددة', 'g'); } },
+      { l: 'متابعة', r: function (r) { var t = []; if (r.trv.tk) t.push('تذكرة ' + dd(r.trv.tkDate)); if (r.trv.exit) t.push('خروج نهائي'); if (r.trv.court) t.push('محكمة عمالية'); if (r.trId) t.push('طلب نقل ' + r.trId); return (r.tkStale ? chip('لم تسافر · حدّث التذكرة', 'r') + ' ' : '') + (t.length ? esc(t.join(' · ')) : (r.tkStale ? '' : '—')); } }
+    ], VIS, { title: 'سجلات الإيواء', ph: 'ابحث بالاسم أو رقم الجواز أو الكفيل', row: 'shopen', tag: function (r) { return ST[r.st]; }, chips: [['', 'الكل', VIS.length]].concat(ST.map(function (s, i) { return [s, s, counts[i]]; })) });
+  } else {
+    body = '<div class="shcards">' + (VIS.map(function (r, i) {
+      var d = duesOf(r), n = gRem(r), gd = gDays(r);
+      return '<article class="shc" style="border-top-color:' + STC[r.st] + '" data-act="shopen" data-i="' + i + '" tabindex="0"><div class="xrow"><b>' + esc(r.name) + '</b>' + chip(ST[r.st], STT[r.st]) + '</div><p class="mut sm">' + esc(r.nat) + ' · جواز ' + esc(r.pp) + '</p><p>الكفيل: ' + esc(r.sp) + ' <span class="mut">' + esc(r.spPh) + '</span></p><p class="mut sm">' + esc(r.off) + (r.reason ? ' · السبب: ' + esc(r.reason) : '') + '</p>' + (r.tkStale ? '<p>' + chip('لم تسافر · حدّث التذكرة', 'r') + '</p>' : '') +

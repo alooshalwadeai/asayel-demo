@@ -1,0 +1,150 @@
+(() => {
+  'use strict';
+  const api = 'https://rmhkmutxptwdvcorcfyy.supabase.co/rest/v1/rpc/';
+  const publicKey = 'sb_publishable_wJghGm84T-aRdvKZZXmF3Q_zEfYRsM9';
+  const permission = 'إضافة رقم التأشيرة نيابةً عن العميل';
+  const choices = ['نعم، لدي رقم التأشيرة', 'ساعدني ألقى رقم تأشيرتي', 'أطلب مساعدة مجانية من أصايل'];
+  const esc = x => String(x ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const when = x => new Intl.DateTimeFormat('ar-SA-u-ca-gregory',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Riyadh'}).format(new Date(x));
+  const current = () => window.XP_U?.rcust?.() || window.XP_U?.cust?.();
+  const keyFor = c => 'asayel.recruitment.' + c.ph;
+  function credentials(c) {
+    const name = keyFor(c);
+    let data = JSON.parse(localStorage.getItem(name) || 'null');
+    if (!data) {
+      data = {key:crypto.randomUUID()};
+      localStorage.setItem(name,JSON.stringify(data));
+    }
+    return data;
+  }
+  async function call(fn,args,staff=false) {
+    const headers = {'Content-Type':'application/json',apikey:publicKey};
+    if (staff) {
+      const token = JSON.parse(localStorage.getItem('asayel-chat') || 'null')?.access_token;
+      if (!token) throw Error('سجّل الدخول بحسابك الوظيفي لعرض هذا القسم.');
+      headers.Authorization = 'Bearer ' + token;
+    }
+    const res = await fetch(api + fn,{method:'POST',headers,body:JSON.stringify(args)});
+    const data = await res.json();
+    if (!res.ok) throw Error(data.message || 'تعذّر حفظ التغيير. حاول مرة أخرى.');
+    return data;
+  }
+  function summary(h) {
+    return '<dl><div><dt>العاملة</dt><dd>'+esc(h.worker)+'</dd></div><div><dt>رقم الحجز</dt><dd><bdi>'+esc(h.ref)+'</bdi></dd></div><div><dt>انتهاء الحجز بتوقيت المملكة</dt><dd>'+esc(when(h.expires))+'</dd></div></dl>';
+  }
+  function button(action,text) {return '<button type="button" data-v="'+action+'">'+text+'</button>';}
+  function field(staff) {
+    return '<form data-visa-form><label>رقم التأشيرة<input name="number" type="text" inputmode="numeric" dir="ltr" required pattern="[0-9٠-٩۰-۹]+" autocomplete="off"></label><button>'+ (staff?'حفظ الرقم':'تأكيد الحجز برقم التأشيرة') +'</button></form>';
+  }
+  function details(choice) {
+    if(choice==='0') return field(false);
+    if(choice==='1') return '<h4>سبق أن صدرت لي تأشيرة</h4><p>سجّل الدخول إلى حسابك الشخصي في مساند، وافتح طلبات التأشيرات، ثم اعرض تفاصيل التأشيرة الصادرة وانسخ رقمها. يمكنك أيضًا مراجعة الرسالة النصية الواردة من مساند على جوالك المسجّل. إذا كان الإشعار لا يتضمن الرقم، ارجع إلى تفاصيل الطلب في حسابك.</p><h4>أحتاج إلى إصدار تأشيرة</h4><p>سجّل الدخول إلى مساند أو أنشئ حسابك الشخصي، ثم اختر خدمة إصدار تأشيرة عمالة منزلية. أكمل البيانات المطلوبة، وراجع تفاصيل الرسوم، واتبع تعليمات السداد الظاهرة في مساند. بعد صدور التأشيرة، تابع إشعار مساند على جوالك واستخرج الرقم من الرسالة أو من تفاصيل الطلب.</p><div class="av-actions"><a href="https://musaned.com.sa/" target="_blank" rel="noopener noreferrer">فتح منصة مساند</a>'+button('0','حصلت على الرقم، أدخله الآن')+'</div>';
+    if(choice==='2') return '<p>سيتواصل معك أحد موظفي شركة أصايل على جوالك المسجّل لمساعدتك في فتح حسابك الشخصي في مساند، وإرشادك خلال خطوات إصدار التأشيرة</p><p>أتعاب شركة أصايل للمساعدة: ٠ ريال<br>رسوم خدمة إصدار التأشيرة عبر مساند: ١٧٢٫٥٠ ريال، مستحقة لمنصة مساند</p>'+button('help','اطلب تواصل موظف أصايل');
+    return '';
+  }
+  function status(h) {
+    if(h.cancelled) return 'أُلغي الحجز';
+    if(h.visa) return 'تم الحجز برقم التأشيرة '+esc(h.visa)+'. '+(h.added_by?'أضاف فريق أصايل الرقم إلى حجزك، ويمكنك الآن متابعة طلبك':'يمكنك متابعة طلبك من حسابك في أصايل');
+    if(h.expired) return 'انتهت مهلة الحجز';
+    if(h.help_at) return 'استلمنا طلب المساعدة. سيتواصل معك موظف أصايل على جوالك المنتهي بـ '+esc(h.phone.slice(-4));
+    return 'الخطوة التالية: إضافة رقم التأشيرة';
+  }
+  function customerPanel(h,choice) {
+    const open=!h.expired&&!h.cancelled&&!h.visa;
+    return '<h2>حجز السيرة الذاتية</h2>'+summary(h)+'<p role="status">'+status(h)+'</p>'+
+      (h.visa?'<p>الربط في مساند · '+(h.linked_at?'تم تأكيد الربط':'بانتظار تأكيد الموظف')+'</p>':'')+
+      (h.help_at?'<p>حالة طلب المساعدة · '+(h.visa?'تمت إضافة رقم التأشيرة':'تم استلام الطلب')+'</p>':'')+
+      (open?(h.help_at?button('0','إضافة رقم التأشيرة'):'<h3>هل لديك رقم التأشيرة؟</h3><div class="av-choices">'+choices.map((label,i)=>'<button type="button" data-v="'+i+'" aria-pressed="'+(String(i)===choice)+'">'+label+'</button>').join('')+'</div>')+'<div class="av-detail">'+details(choice)+'</div>':'');
+  }
+  function staffRow(h,desk,selected) {
+    const id=esc(h.id), open=!h.visa&&!h.expired&&!h.cancelled;
+    return '<article data-booking="'+id+'"><h3>'+esc(h.customer)+'</h3><p>جوال العميل <bdi>'+esc(h.phone)+'</bdi></p>'+summary(h)+
+      (h.visa?'<p>رقم التأشيرة <bdi>'+esc(h.visa)+'</bdi></p>':'')+
+      '<p>'+(h.cancelled?'أُلغي الحجز':h.expired&&!h.visa?'انتهت المهلة':h.visa?'تمت إضافة رقم التأشيرة':'بانتظار إضافة رقم التأشيرة')+'</p>'+
+      (open&&desk.can_save&&h.help_at?(selected===h.id?field(true):button('edit','إضافة رقم التأشيرة للعميل')):'')+
+      (h.linked_at?'<p>تم الربط في مساند · '+esc(when(h.linked_at))+'</p>':h.visa&&!h.cancelled&&desk.can_link?button('link','تأكيد اكتمال الربط في مساند'):'')+'</article>';
+  }
+  async function load(el) {
+    const mode=el.dataset.mode;
+    if(mode==='customer') {
+      const c=current(); if(!c) return;
+      const cred=credentials(c); if(!cred.id) return;
+      el.h=await call('asayel_visa',{p_action:'read',p_id:cred.id,p_key:cred.key});
+      const h=el.h, u=window.XP_U;
+      if(!el.isConnected || current()?.ph!==c.ph)return;
+      if(!h.cancelled&&!h.expired&&u?.HOLDS&&u?.CANDS) {
+        const i=u.CANDS.findIndex(w=>w.n===h.worker&&w.co===h.nationality);
+        const holds=u.HOLDS();
+        const local=holds.find(x=>x.ph===c.ph&&x.ci===i&&x.st!=='done');
+        if(i>=0&&!local){
+          const restored={ci:i,cn:h.customer,ph:h.phone,visa:h.visa||'',at:Date.parse(h.expires)-72*3600000,st:'held'};
+          holds.unshift(restored);u.CANDS[i].hold=restored;u.CANDS[i].s='محجوزة لعميل';
+          window.XP_HOST?.reopen?.();return;
+        }
+        if(local)local.visa=h.visa||'';
+      }
+    } else el.data=await call('asayel_desk',{p_view:mode},true);
+    paint(el);
+  }
+  function paint(el) {
+    const mode=el.dataset.mode;
+    let body;
+    if(mode==='customer') body=customerPanel(el.h,el.choice);
+    if(mode==='queue') body='<h2>طلبات التأشيرات والمساعدة</h2>'+ (el.data.rows.map(h=>staffRow(h,el.data,el.selected)).join('')||'<p>لا توجد طلبات.</p>');
+    if(mode==='permissions') body='<h2>'+permission+'</h2>'+el.data.map(u=>'<label class="av-perm"><input type="checkbox" data-employee="'+esc(u.id)+'" '+(u.enabled?'checked':'')+'>'+esc(u.name)+'</label>').join('');
+    if(mode==='audit') body='<h2>سجل تأشيرات الاستقدام</h2>'+ (el.data.map(r=>'<p>'+esc(r.employee)+' · '+esc(r.action)+' · '+esc(r.booking)+' · '+esc(when(r.happened_at))+'</p>').join('')||'<p>لا توجد عمليات مسجّلة.</p>');
+    el.innerHTML=body+'<p class="av-msg" role="alert"></p>';
+  }
+  function message(el,text) {
+    let msg=el.querySelector('.av-msg');
+    if(!msg){msg=document.createElement('p');msg.className='av-msg';msg.setAttribute('role','alert');el.append(msg);}
+    msg.textContent=text;
+  }
+  async function mutate(el,action,id,number) {
+    if(el.busy) return;
+    const staff=el.dataset.mode!=='customer';
+    el.busy=true;
+    try {
+      const data=await call('asayel_visa',{p_action:action,p_id:id,p_number:number||null,p_key:staff?null:credentials(current()).key},staff);
+      el.choice=null;el.selected=null;
+      if(staff) await load(el); else {el.h=data;paint(el);}
+      if(data.conflict) message(el,'سبق حفظ رقم مختلف. احتُفظ بالرقم '+data.visa+'، يرجى مراجعته قبل أي تغيير.');
+    } catch(e){message(el,e.message);} finally {el.busy=false;}
+  }
+  document.addEventListener('click',e=>{
+    const b=e.target.closest('.av-panel [data-v]');if(!b)return;
+    const el=b.closest('.av-panel'), action=b.dataset.v, id=b.closest('[data-booking]')?.dataset.booking;
+    if(/^\d$/.test(action)){el.choice=action;paint(el);el.querySelector('input[name=number]')?.focus();}
+    if(action==='help') mutate(el,'help',el.h.id);
+    if(action==='edit'){el.selected=id;paint(el);el.querySelector('input[name=number]')?.focus();}
+    if(action==='link')mutate(el,'link',id);
+    if(action==='retry')load(el).catch(err=>message(el,err.message));
+  });
+  document.addEventListener('submit',e=>{
+    if(!e.target.matches('[data-visa-form]'))return;
+    e.preventDefault();const el=e.target.closest('.av-panel');
+    mutate(el,'save',e.target.closest('[data-booking]')?.dataset.booking||el.h.id,e.target.elements.number.value);
+  });
+  document.addEventListener('change',async e=>{
+    const box=e.target;if(!box.matches('.av-panel [data-employee]'))return;
+    const el=box.closest('.av-panel');box.disabled=true;
+    try{el.data=await call('asayel_desk',{p_view:'permissions',p_employee:box.dataset.employee,p_enable:box.checked},true);paint(el);}
+    catch(err){box.checked=!box.checked;box.disabled=false;message(el,err.message);}
+  });
+  const modes={RecMy:'customer',CustHome:'customer',RecHolds:'queue',Recruitment:'queue',RecOrders:'queue',Staff:'permissions',AuditLog:'audit'};
+  function mount() {
+    const mode=modes[location.hash.slice(2)];
+    const host=document.querySelector('#app .xmn') || document.querySelector('#app main');
+    if(!host||!mode||host.querySelector('.av-panel'))return;
+    if(mode==='customer'&&(!current()||!credentials(current()).id))return;
+    const el=document.createElement('section');el.className='av-panel';el.dir='rtl';el.dataset.mode=mode;
+    host.prepend(el);load(el).catch(err=>{message(el,err.message);el.insertAdjacentHTML('beforeend',button('retry','إعادة المحاولة'));});
+  }
+  new MutationObserver(mount).observe(document.documentElement,{childList:true,subtree:true});
+  window.addEventListener('focus',()=>{const el=document.querySelector('.av-panel');if(el&&!el.busy&&!el.querySelector('input:focus'))load(el).catch(e=>message(el,e.message));});
+  window.AsayelVisa={async reserve(c,worker) {
+    const cred=credentials(c);
+    const result=await call('asayel_reserve',{p_key:cred.key,p_customer:c.name,p_phone:c.ph,p_worker:worker.n,p_nat:worker.co,p_dest:window.XP_DEST||''});
+    cred.id=result.id;localStorage.setItem(keyFor(c),JSON.stringify(cred));return result;
+  }};
+})();
