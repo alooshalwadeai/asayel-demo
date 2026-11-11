@@ -34,7 +34,12 @@ var STN = { held: 'محجوزة · بانتظار التحويل', review: 'إي
 var STT = { held: 'a', review: 'b', musaned: 'g' };
 function rem(h) { return h.st === 'held' || h.st === 'review' ? h.at + HOLD - Date.now() : 0; }
 function active() { return HOLDS.filter(function (h) { return h.st !== 'done'; }); }
-function myHold() { return CUST ? HOLDS.filter(function (h) { return h.ph === CUST.ph && h.st !== 'done'; })[0] : null; }
+function myHold() {
+  if (!CUST) return null;
+  var active = HOLDS.filter(function (h) { return h.ph === CUST.ph && h.st !== 'done'; });
+  var id = JSON.parse(localStorage.getItem('asayel.recruitment.' + CUST.ph) || '{}').id;
+  return active.find(function (h) { return h.bookingId === id; }) || active[0] || null;
+}
 function release(h, why) {
   var c = CANDS[h.ci]; c.s = 'متاحة'; delete c.hold; h.st = 'done';
   HOLDS.splice(HOLDS.indexOf(h), 1);
@@ -144,12 +149,11 @@ ACT.rcontact = function () { toast('يُضاف رقم واتساب المكتب 
 ACT.rgomy = function () { go('RecMy'); };
 ACT.rhold = function (t) {
   var i = +t.dataset.i, c = CANDS[i];
-  if (myHold()) { toast('عندك حجز قائم · أكمل سداده أو ألغه قبل حجز عاملة أخرى'); return; }
   if (c.s !== 'متاحة') { toast('هذه العاملة لم تعد متاحة'); rerender(); return; }
   drawer('تأكيد الحجز', note() + '<p>تحجز <b>' + esc(c.n) + '</b> (' + esc(c.co) + ') باسم <b>' + esc(CUST.name) + '</b> لمدة 3 أيام (72 ساعة) للسداد بالتحويل البنكي، بدون تمديد.</p>' + btn('تأكيد الحجز', 'rholdok', 'data-i="' + i + '"') + ' <button type="button" class="xbt ghost" data-close>رجوع</button>');
 };
 ACT.rholdok = function (t) {
-  var i = +t.dataset.i, c = CANDS[i]; if (c.s !== 'متاحة' || myHold()) { closeDr(); return; }
+  var i = +t.dataset.i, c = CANDS[i]; if (c.s !== 'متاحة') { closeDr(); return; }
   var h = { ci: i, cn: CUST.name, ph: CUST.ph, visa: '', at: Date.now(), st: 'held' };
   HOLDS.unshift(h); c.s = 'محجوزة لعميل'; c.hold = h;
   log('إضافة', 'حجوزات الاستقدام', 'حجز ' + c.n + ' للعميل ' + CUST.name + ' (3 أيام)', 'متاحة', 'محجوزة');
@@ -214,3 +218,4 @@ var css = '.xs.xcu{display:block;min-height:100vh;background:#FBF8F1}.xcu .xmn{m
 '@media (max-width:820px){.rflow{grid-template-columns:1fr}.rgrid{grid-template-columns:1fr}.rh{font-size:21px}.xcu .xmn{padding:12px 16px}}';
 var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
 })();
+

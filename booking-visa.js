@@ -82,7 +82,7 @@
       local.st='done';delete worker.hold;worker.s='متاحة';
     }
     localStorage.setItem('z13my:'+c.ph,JSON.stringify(previousIds(c).filter(id=>id!==h.id)));
-    delete cred.id;localStorage.setItem(keyFor(c),JSON.stringify(cred));
+    stock=null;fetched=0;delete cred.id;localStorage.setItem(keyFor(c),JSON.stringify(cred));
     window.XP_HOST?.reopen?.();
   }
   async function cancel() {
@@ -101,6 +101,8 @@
     if(mode==='customer') {
       const c=current(); if(!c) return;
       const cred=credentials(c);
+      el.bookings=await call('asayel_my_bookings',{p_key:cred.key});
+      if(!cred.id&&el.bookings.length){cred.id=el.bookings[0].id;localStorage.setItem(keyFor(c),JSON.stringify(cred));}
       if(!cred.id) {
         const prior=await call('asayel_resume_legacy',{p_ids:previousIds(c),p_phone:c.ph,p_key:cred.key});
         if(!prior){el.hidden=true;return;}
@@ -115,11 +117,11 @@
         const holds=u.HOLDS();
         const local=holds.find(x=>x.ph===c.ph&&x.ci===i&&x.st!=='done');
         if(i>=0&&!local){
-          const restored={ci:i,cn:h.customer,ph:h.phone,visa:h.visa||'',at:Date.parse(h.expires)-72*3600000,st:'held'};
+          const restored={bookingId:h.id,ci:i,cn:h.customer,ph:h.phone,visa:h.visa||'',at:Date.parse(h.expires)-72*3600000,st:'held'};
           holds.unshift(restored);u.CANDS[i].hold=restored;u.CANDS[i].s='محجوزة لعميل';
           window.XP_HOST?.reopen?.();return;
         }
-        if(local)local.visa=h.visa||'';
+        if(local){local.visa=h.visa||'';local.bookingId=h.id;}
       }
     } else el.data=await call('asayel_desk',{p_view:mode},true);
     paint(el);
@@ -128,7 +130,7 @@
     const mode=el.dataset.mode;
     let body;
     if(mode==='customer') {
-      body=customerPanel(el.h,el.choice);
+      body=(el.bookings?.length>1?'<label>اختر الحجز<select data-current-booking>'+el.bookings.map(b=>'<option value="'+esc(b.id)+'" '+(b.id===el.h.id?'selected':'')+'>'+esc(b.ref)+' · '+esc(b.worker)+'</option>').join('')+'</select></label>':'')+customerPanel(el.h,el.choice);
       if(location.hash==='#/RecMy') {
         const oldCancel=document.querySelector('#app [data-act="rmycancel"]');
         if(oldCancel)oldCancel.hidden=true;
@@ -176,7 +178,12 @@
     mutate(el,'save',e.target.closest('[data-booking]')?.dataset.booking||el.h.id,e.target.elements.number.value);
   });
   document.addEventListener('change',async e=>{
-    const box=e.target;if(!box.matches('.av-panel [data-employee]'))return;
+    const box=e.target;
+    if(box.matches('[data-current-booking]')){
+      const c=current(),cred=credentials(c);cred.id=box.value;localStorage.setItem(keyFor(c),JSON.stringify(cred));
+      window.XP_HOST.reopen();return;
+    }
+    if(!box.matches('.av-panel [data-employee]'))return;
     const el=box.closest('.av-panel');box.disabled=true;
     try{el.data=await call('asayel_desk',{p_view:'permissions',p_employee:box.dataset.employee,p_enable:box.checked},true);paint(el);}
     catch(err){box.checked=!box.checked;box.disabled=false;message(el,err.message);}
@@ -197,16 +204,125 @@
     limitArrivalCities();
     const mode=modes[location.hash.slice(2)];
     const host=document.querySelector('#app .xmn') || document.querySelector('#app main');
-    if(!host||!mode||host.querySelector('.av-panel'))return;
+    if(!host||!mode||host.querySelector('.av-panel[data-mode]'))return;
     if(mode==='customer'&&(!current()||(!credentials(current()).id&&!previousIds(current()).length)))return;
     const el=document.createElement('section');el.className='av-panel';el.dir='rtl';el.dataset.mode=mode;
     host.prepend(el);load(el).catch(err=>{message(el,err.message);el.insertAdjacentHTML('beforeend',button('retry','إعادة المحاولة'));});
   }
   new MutationObserver(mount).observe(document.documentElement,{childList:true,subtree:true});
-  window.addEventListener('focus',()=>{const el=document.querySelector('.av-panel');if(el&&!el.busy&&!el.querySelector('input:focus'))load(el).catch(e=>message(el,e.message));});
+  window.addEventListener('focus',()=>{const el=document.querySelector('.av-panel[data-mode]');if(el&&!el.busy&&!el.querySelector('input:focus'))load(el).catch(e=>message(el,e.message));});
+  const clinicRoutes = {Staff:'permissions',VisaTrack:'queue',Recruitment:'queue',Candidates:'catalog'};
+  const profileFields={n:'الاسم',pp:'الجواز',co:'الجنسية',age:'العمر',ex:'سنوات الخبرة',lg:'اللغات',sk:'المهارات',sal:'الراتب',ag:'المكتب',rel:'الديانة',ms:'الحالة الاجتماعية'};
+  const medical=(action,args={})=>call('asayel_medical',{p_action:action,...args},true);
+  const actionButton=(key,label)=>'<button type="button" data-med="'+key+'">'+label+'</button>';
+  function medicalRows(data) {
+    return data.rows.map(row=>{
+      const stage={medical:'بانتظار نتيجة الفحص',rejected:'رُفض الفحص · بانتظار البديلة',visa:'اجتازت الفحص · في التفييز'}[row.stage];
+      const exam=row.stage==='medical'&&data.examine;
+      const replace=row.stage==='rejected'&&data.replace;
+      return '<article data-order="'+esc(row.id)+'"><h3>'+esc(row.worker_name)+' · '+esc(row.nat)+'</h3><p>الحجز '+esc(row.ref)+' · '+stage+'</p>'+
+        (row.passport?'<p>الجواز المسجّل '+esc(row.passport)+'</p>':'')+
+        (exam||replace?'<label>'+ (replace?'رقم جواز البديلة':'رقم جواز العاملة عند رفض الفحص')+'<input dir="ltr" data-pass maxlength="24"></label>':'')+
+        (exam?actionButton('pass','اجتازت الفحص · الانتقال إلى التفييز')+actionButton('reject','رُفض الفحص · إرسال الجواز للمتابعة'):'')+
+        (replace?actionButton('lookup','عرض السيرة برقم الجواز')+'<div data-profile></div>':'')+'</article>';
+    }).join('')||'<p>لا توجد حجوزات في هذه المرحلة.</p>';
+  }
+  async function clinicLoad(el,mode){
+    if(mode==='permissions'){
+      const rows=await medical('permissions');
+      el.innerHTML='<h2>صلاحية استبدال عاملة بعد رفض الفحص</h2>'+rows.map(s=>'<label class="av-perm"><input type="checkbox" data-delegate="'+esc(s.id)+'" '+(s.enabled?'checked':'')+'>'+esc(s.name)+'</label>').join('');
+    } else if(mode==='catalog'){
+      await medical('permissions');
+      const workers=(window.XP_U?.CANDS||[]).filter(w=>w.pp);
+      const profiles=workers.map(w=>Object.fromEntries([...Object.keys(profileFields),'s'].map(k=>[k,w[k]??''])));
+      if(profiles.length)await medical('catalog',{p_data:profiles});
+      el.innerHTML='<h2>سجل جوازات السير الذاتية</h2><p>السير ذات الجواز المتاحة للمزامنة من هذا الجهاز: '+profiles.length+'</p>'+actionButton('sync','مزامنة السير للمتابعة');
+    } else {
+      const data=await medical('queue');
+      el.innerHTML='<h2>متابعة الفحص والتفييز</h2>'+medicalRows(data);
+    }
+  }
+  function clinicMount(){
+    const mode=clinicRoutes[location.hash.slice(2)],host=document.querySelector('#app .xmn, #app main');
+    if(!mode||!host||host.querySelector('.medical-panel')||!localStorage.getItem('asayel-chat'))return;
+    const el=document.createElement('section');el.className='av-panel medical-panel';el.dataset.clinic=mode;el.dir='rtl';host.append(el);
+    clinicLoad(el,mode).catch(e=>message(el,e.message));
+  }
+  document.addEventListener('change',async e=>{
+    const box=e.target.closest('[data-delegate]');if(!box)return;
+    box.disabled=true;
+    try{await medical('grant',{p_id:box.dataset.delegate,p_data:box.checked});}
+    catch(err){box.checked=!box.checked;message(box.closest('section'),err.message);}
+    finally{box.disabled=false;}
+  });
+  document.addEventListener('input',e=>{
+    if(e.target.matches('[data-pass]'))e.target.closest('article').querySelector('[data-profile]')?.replaceChildren();
+  });
+  document.addEventListener('click',async e=>{
+    const b=e.target.closest('[data-med]');if(!b)return;
+    const el=b.closest('.medical-panel'),row=b.closest('article'),act=b.dataset.med;
+    if(el.busy)return;
+    el.busy=true;b.disabled=true;
+    try{
+      if(act==='sync'){await clinicLoad(el,'catalog');return;}
+      const input=row.querySelector('[data-pass]'),pp=input.value.trim().toUpperCase();
+      if(act!=='pass'&&!pp)throw Error('أدخل رقم الجواز أولًا');
+      const data=await medical(act,{p_id:row.dataset.order,p_passport:act==='pass'?null:pp});
+      if(act==='lookup'){
+        if(input.value.trim().toUpperCase()!==pp)return;
+        row.querySelector('[data-profile]').innerHTML='<dl>'+Object.entries(profileFields).map(([key,label])=>'<div><dt>'+label+'</dt><dd>'+esc(data[key]||'—')+'</dd></div>').join('')+'</dl>'+actionButton('replace','اعتماد البديلة على نفس التأشيرة');
+      }else await clinicLoad(el,'queue');
+    }catch(err){message(el,err.message);}finally{el.busy=false;b.disabled=false;}
+  });
+  let stock=null,fetching=false,fetched=0,retryAt=0;
+  function showStock(){
+    const route=location.hash.slice(2);
+    if(route==='RecCVs'){
+      for(const b of document.querySelectorAll('#app [data-act="rhold"]')){
+        const w=window.XP_U?.CANDS?.[b.dataset.i],card=b.closest('article');
+        if(card&&w)card.toggleAttribute('data-stock-hidden',!stock||stock.recruitment.some(r=>r.worker===w.n&&r.nat===w.co));
+      }
+    }
+    if(route==='AvailableWorkers'&&stock){
+      const host=document.querySelector('#app .xmn,#app main')||document.querySelector('#app');
+      if(!host)return;
+      let panel=host.querySelector('[data-rental-list]');
+      const period=r=>({d:'يوم',w:'أسبوع',m:'شهر',h:r.hours+' ساعات'}[r.dur]);
+      const markup=stock.rent.map(r=>'<article><b>'+esc(r.name)+' · '+esc(r.nat)+'</b><p>محجوزة لمدة '+esc(period(r))+' · من '+esc(r.start_date)+' إلى '+esc(r.end_date)+'</p></article>').join('');
+      if(!panel&&markup){panel=document.createElement('section');panel.className='av-panel';panel.dataset.rentalList='';host.prepend(panel);}
+      if(panel&&panel.dataset.content!==markup){panel.innerHTML=markup?'<h2>فترات حجز عاملات الإيجار</h2>'+markup:'';panel.dataset.content=markup;}
+      for(const r of stock.rent){
+        const root=host.querySelectorAll('article,.xcvc,[data-worker-id]');
+        for(const card of root){
+          if(panel?.contains(card))continue;
+          const exact=[...card.querySelectorAll('h2,h3,b,strong')].some(n=>n.textContent.trim()===r.name);
+          if(card.dataset.workerId!==r.id&&!(exact&&card.textContent.includes(r.nat)))continue;
+          if(card.querySelector('[data-rental-period="'+r.id+'-'+r.start_date+'"]'))continue;
+          const badge=document.createElement('p');badge.dataset.rentalPeriod=r.id+'-'+r.start_date;badge.textContent='محجوزة لمدة '+period(r)+' · '+r.start_date+' — '+r.end_date;card.append(badge);
+        }
+      }
+    }
+  }
+  async function inventory(){
+    if(!['#/RecCVs','#/AvailableWorkers'].includes(location.hash))return;
+    showStock();
+    if(fetching||Date.now()-fetched<5000||Date.now()<retryAt)return;
+    fetching=true;
+    try{stock=await call('asayel_availability',{});fetched=Date.now();showStock();}
+    catch{retryAt=Date.now()+5000;}
+    finally{fetching=false;}
+  }
+  const stockStyle=document.createElement('style');
+  stockStyle.textContent='[data-stock-hidden]{display:none!important}.medical-panel button{margin:4px}.medical-panel input:not([type=checkbox]){display:block;max-width:100%}';
+  document.head.append(stockStyle);
+  new MutationObserver(()=>{clinicMount();inventory();}).observe(document.documentElement,{childList:true,subtree:true});
+  setInterval(()=>{if(!document.hidden)inventory();},5000);
+  window.addEventListener('focus',()=>{fetched=0;inventory();});
+
   window.AsayelVisa={cancel,release,async reserve(c,worker) {
     const cred=credentials(c);
     const result=await call('asayel_reserve',{p_key:cred.key,p_customer:c.name,p_phone:c.ph,p_worker:worker.n,p_nat:worker.co,p_dest:window.XP_DEST||''});
-    cred.id=result.id;localStorage.setItem(keyFor(c),JSON.stringify(cred));return result;
+    stock=null;fetched=0;cred.id=result.id;localStorage.setItem(keyFor(c),JSON.stringify(cred));return result;
   }};
 })();
+
