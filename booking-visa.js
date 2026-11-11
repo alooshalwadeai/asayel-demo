@@ -64,11 +64,20 @@
       (open&&desk.can_save&&h.help_at?(selected===h.id?field(true):button('edit','إضافة رقم التأشيرة للعميل')):'')+
       (h.linked_at?'<p>تم الربط في مساند · '+esc(when(h.linked_at))+'</p>':h.visa&&!h.cancelled&&desk.can_link?button('link','تأكيد اكتمال الربط في مساند'):'')+'</article>';
   }
+  function previousIds(c) {
+    try {return JSON.parse(localStorage.getItem('z13my:'+c.ph)||'[]').filter(id=>/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)).slice(0,20);}
+    catch {return [];}
+  }
   async function load(el) {
     const mode=el.dataset.mode;
     if(mode==='customer') {
       const c=current(); if(!c) return;
-      const cred=credentials(c); if(!cred.id) return;
+      const cred=credentials(c);
+      if(!cred.id) {
+        const prior=await call('asayel_resume_legacy',{p_ids:previousIds(c),p_phone:c.ph,p_key:cred.key});
+        if(!prior){el.hidden=true;return;}
+        cred.id=prior.id;localStorage.setItem(keyFor(c),JSON.stringify(cred));
+      }
       el.h=await call('asayel_visa',{p_action:'read',p_id:cred.id,p_key:cred.key});
       const h=el.h, u=window.XP_U;
       if(!el.isConnected || current()?.ph!==c.ph)return;
@@ -89,7 +98,13 @@
   function paint(el) {
     const mode=el.dataset.mode;
     let body;
-    if(mode==='customer') body=customerPanel(el.h,el.choice);
+    if(mode==='customer') {
+      body=customerPanel(el.h,el.choice);
+      if(location.hash==='#/RecMy') {
+        const card=document.querySelector('#app .kwa')?.closest('section.rcd');
+        if(card)card.hidden=!el.h.visa&&!el.h.cancelled&&!el.h.expired;
+      }
+    }
     if(mode==='queue') body='<h2>طلبات التأشيرات والمساعدة</h2>'+ (el.data.rows.map(h=>staffRow(h,el.data,el.selected)).join('')||'<p>لا توجد طلبات.</p>');
     if(mode==='permissions') body='<h2>'+permission+'</h2>'+el.data.map(u=>'<label class="av-perm"><input type="checkbox" data-employee="'+esc(u.id)+'" '+(u.enabled?'checked':'')+'>'+esc(u.name)+'</label>').join('');
     if(mode==='audit') body='<h2>سجل تأشيرات الاستقدام</h2>'+ (el.data.map(r=>'<p>'+esc(r.employee)+' · '+esc(r.action)+' · '+esc(r.booking)+' · '+esc(when(r.happened_at))+'</p>').join('')||'<p>لا توجد عمليات مسجّلة.</p>');
@@ -132,11 +147,23 @@
     catch(err){box.checked=!box.checked;box.disabled=false;message(el,err.message);}
   });
   const modes={RecMy:'customer',CustHome:'customer',RecHolds:'queue',Recruitment:'queue',RecOrders:'queue',Staff:'permissions',AuditLog:'audit'};
+  const mainCities=new Set('الرياض|مكة المكرمة|جدة|الطائف|المدينة المنورة|الدمام|الخبر|أبها|نجران|جازان|الباحة|بريدة|حائل|تبوك|سكاكا|عرعر'.split('|'));
+  function limitArrivalCities() {
+    const select=document.querySelector('#xdr select#z17dest');
+    if(!select||select.dataset.mainCities)return;
+    const value=select.value;
+    const options=Array.from(select.options).filter(o=>!o.value||mainCities.has(o.value));
+    if(!options.some(o=>o.value))return;
+    select.dataset.mainCities='1';
+    select.replaceChildren(...options);
+    select.value=mainCities.has(value)?value:'';
+  }
   function mount() {
+    limitArrivalCities();
     const mode=modes[location.hash.slice(2)];
     const host=document.querySelector('#app .xmn') || document.querySelector('#app main');
     if(!host||!mode||host.querySelector('.av-panel'))return;
-    if(mode==='customer'&&(!current()||!credentials(current()).id))return;
+    if(mode==='customer'&&(!current()||(!credentials(current()).id&&!previousIds(current()).length)))return;
     const el=document.createElement('section');el.className='av-panel';el.dir='rtl';el.dataset.mode=mode;
     host.prepend(el);load(el).catch(err=>{message(el,err.message);el.insertAdjacentHTML('beforeend',button('retry','إعادة المحاولة'));});
   }
