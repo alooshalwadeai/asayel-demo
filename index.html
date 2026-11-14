@@ -208,7 +208,7 @@ if (n <= 0) { clearInterval(adTimer); if (current === 'LandingAd') go('Landing')
 }, 1000);
 }
 }
-var PIN_HASH = '06cac37906290aa35aeda961888283666a59a57bf76b47cf0e74046a273cd1e8';
+var PIN_HASH = ''; /* staff sign in with their own account (name + personal code) */
 var LOCK = {}; MENU[1][1].concat(MENU[2][1], MENU[3][1]).forEach(function (it) { if (it[0] !== 'StaffLogin') LOCK[it[0]] = 1; });
 var unlocked = false, pending = null, fails = 0, waitUntil = 0;
 try { unlocked = sessionStorage.getItem('asayel-ok') === '1'; } catch (e) {}
@@ -225,8 +225,8 @@ var box = document.getElementById('pin');
 if (!box) {
 box = document.createElement('div'); box.id = 'pin';
 box.innerHTML = '<form><svg width="46" height="54" viewBox="0 0 100 118" aria-hidden="true"><path d="M50 4C50 4 12 50 12 74a38 38 0 0 0 76 0C88 50 50 4 50 4z" fill="#1D5FA8"/></svg>' +
-'<strong>دخول الإدارة</strong><span>أدخل رمز الدخول المكوّن من ٤ أرقام</span>' +
-'<input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="رمز الدخول">' +
+'<strong>دخول الموظفين</strong><span>اختر اسمك ثم أدخل رمزك الشخصي</span>' +
+'<input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="30" autocomplete="current-password" aria-label="الرمز الشخصي">' +
 '<em role="alert"></em><button type="submit">دخول</button><a href="#/Landing">رجوع لصفحة العملاء</a></form>';
 document.body.appendChild(box);
 var f = box.querySelector('form'), inp = box.querySelector('input'), err = box.querySelector('em');
@@ -236,7 +236,7 @@ e.preventDefault();
 var now = Date.now();
 if (now < waitUntil) { err.textContent = 'محاولات كثيرة · انتظر ' + Math.ceil((waitUntil - now) / 1000) + ' ثانية'; return; }
 var v = inp.value.replace(/[٠-٩]/g, function (c) { return String(c.charCodeAt(0) - 1632); }).trim();
-if (await sha('asayel-mansoura:' + v) === PIN_HASH) {
+if (PIN_HASH && await sha('asayel-mansoura:' + v) === PIN_HASH) {
 fails = 0; setUnlocked(true); box.classList.remove('show'); inp.value = ''; err.textContent = '';
 go(pending || 'Dashboard'); if (location.hash === '#/' + (pending || 'Dashboard')) route();
 } else {
