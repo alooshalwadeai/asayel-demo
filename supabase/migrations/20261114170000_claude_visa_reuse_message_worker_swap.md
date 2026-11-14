@@ -13,3 +13,6 @@
 - الرواتب والحوافز: جداول `hr_*`، `hr_bonus_events`، `public.hr_access`, `public.hr_my`.
 - مكان الوصول: `rec_orders.destination` و`public.rec_quote(..., p_dest)`.
 - ملفات الواجهة لهذه الأقسام (z13–z17) تُخدم من Supabase Storage (`site/js/`) وتُحمَّل من `p.js`.
+
+## ١٤ نوفمبر ٢٠٢٦ — `visa_number_format_19_10_digits`
+- رقم التأشيرة يجب أن يبدأ بـ 19 ومكوّنًا من 10 أرقام (`private.visa_check`)، ويُطبّق عند الإدخال أو التعديل فقط في: `rec_orders` (داخل `asayel_booking.guard_order`)، `asayel_booking.holds`، `agent_entries`، `tafweed_sheet`، و`cust_requests.data.visa`. الأرقام العربية تُحوَّل تلقائيًا.
