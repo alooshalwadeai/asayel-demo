@@ -50,7 +50,8 @@ function parse(raw){raw=arFix(raw);
  if(!o.age){var av=grab(U_,[/\bAGE\b/],vAge)||grab(lines,[/العمر|السن/],vAge);if(av)o.age=av;}
  if(!o.dob&&!o.age){var re=/\b(\d{1,2})\s*(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\s*(\d{2,4})\b/g,qq;while((qq=re.exec(one))){var d3=new Date(yr(qq[3]),MON[qq[2]],+qq[1]);if(okAge(d3)){var n3=new Date();o.age=n3.getFullYear()-d3.getFullYear();break;}}}
  var ar=arn(raw);
- if(/NON[\s\-]*MUSL?IM/.test(one))o.rel='غير مسلمة';else if(/\bMUSLIM\b|\bISLAM/.test(one)||/مسلم|الاسلام/.test(ar))o.rel='مسلمة';else if(/CHRISTIAN|CATHOLIC|PROTESTANT|ORTHODOX/.test(one)||/مسيح/.test(ar))o.rel='مسيحية';
+ var CHR=/CH\W?R[I1L|!]\W?S\W?T[I1L|!]?\W?[AE]\W?[I1L|!]?\W?N|KR[I1]ST[I1]AN|CATHOL|PROTEST|ORTHOD|0RTHOD|PENTECOST|EVANGEL|ADVENTIST|BAPTIST|LUTHERAN|ANGLICAN|METHODIST|COPTIC|JEHOVAH|BORN\s*AGAIN|\bCHURCH\b/,RCV=/ROMAN|\bR\.?\s?C\b/,MUS=/\bMUSL[I1L|!]M|\bMOSLEM|\bMUSLEM|\bISLAM/,RL=/RE[L1I]{1,2}G[I1L]?[O0]N\W{0,4}([A-Z0-9 .\-]{2,24})/.exec(one),RV=RL?RL[1]:'';
+ if(/NON[\s\-]*MUSL?IM/.test(one))o.rel='غير مسلمة';else if(MUS.test(RV)||/مسلم|الاسلام|الإسلام/.test(ar))o.rel='مسلمة';else if(CHR.test(RV)||RCV.test(RV)||/مسيح|نصران|كاثوليك|أرثوذكس|ارثوذكس|بروتستان/.test(ar))o.rel='مسيحية';else if(MUS.test(one))o.rel='مسلمة';else if(CHR.test(one))o.rel='مسيحية';
  if(/\bMARRIED\b/.test(one)||/متزوج/.test(ar))o.ms='متزوجة';else if(/\bSINGLE\b/.test(one)||/عزباء|عزب/.test(ar))o.ms='عزباء';else if(/DIVORCED/.test(one)||/مطلق/.test(ar))o.ms='مطلقة';else if(/WIDOW/.test(one)||/ارمل/.test(ar))o.ms='أرملة';
  var lg=[];if(/ARABIC/.test(one)||/العربي/.test(ar))lg.push('عربي');if(/ENGLISH/.test(one)||/الانجليزي/.test(ar))lg.push('إنجليزي');if(lg.length)o.lg=lg.join(' · ');
  var sk=[];if(/CLEAN|DUST|HOUSE\s*KEEP|MOPP|SWEEP/.test(one)||/تنظيف/.test(ar))sk.push('تنظيف');if(/WASH|IRON|LAUNDRY/.test(one)||/غسيل|كي/.test(ar))sk.push('غسيل وكي');if(/COOK/.test(one)||/طبخ/.test(ar))sk.push('طبخ');if(/BABY|CHILD|KIDS|INFANT|NANNY/.test(one)||/اطفال/.test(ar))sk.push('رعاية أطفال');if(/ELDER|OLD\s*AGE|AGED|SENIOR|PATIENT/.test(one)||/كبار|مسن/.test(ar))sk.push('رعاية كبار');if(sk.length)o.sk=sk.join(' · ');
@@ -82,7 +83,13 @@ function rec(w,cv,psm){return w.setParameters({tessedit_pageseg_mode:psm}).then(
 function full(q){return q.n&&q.co&&q.pp&&q.sal&&q.age;}
 function ocr(cv,prog){OP=prog;return wk().then(function(w){return rec(w,up(cv,0),'3').then(function(t){if(full(parse(t)))return t;var c1=up(cv,1);return rec(w,c1,'3').then(function(t2){var all=t+'\n'+t2,q=parse(all);if(q.n&&q.co)return all;return rec(w,c1,'11').then(function(t3){return all+'\n'+t3;});});});});}
 function ocrTop(cv){var h=Math.round(cv.height*.2),c=document.createElement('canvas');c.width=cv.width;c.height=h;c.getContext('2d').drawImage(cv,0,0,cv.width,h,0,0,cv.width,h);OP=null;return wk().then(function(w){return rec(w,up(c,0),'3');}).catch(function(){return '';});}
-function pickPhoto(cands,pw,ph){var best=null,ba=0;cands.forEach(function(cv){if(!cv)return;var w=cv.width,h=cv.height,a=w*h;if(w<60||h<60)return;var ratio=h/w;if(ratio<1.05||ratio>1.9)return;if(a>ba){ba=a;best=cv;}});return best;}
+function paperish(cv){try{var S=32,t=document.createElement('canvas');t.width=S;t.height=S;var x=t.getContext('2d');x.drawImage(cv,0,0,S,S);var d=x.getImageData(0,0,S,S).data,wh=0,gr=0,sk=0,n=S*S;for(var i=0;i<d.length;i+=4){var r=d[i],g=d[i+1],b=d[i+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b);if(mn>205)wh++;if(mx-mn<16)gr++;if(r>40&&g<r*.92&&g>=b&&r-b>10&&r-b<140)sk++;}return {white:wh/n,grey:gr/n,skin:sk/n};}catch(e){return {white:0,grey:0,skin:0};}}
+function pickPhoto(cands,pw,ph){var L=[];cands.forEach(function(cv){if(!cv)return;var w=cv.width,h=cv.height;if(w<60||h<60)return;var ratio=h/w;if(ratio<1.0||ratio>1.9)return;var f=paperish(cv);
+ /* ورقة / مستند ممسوح: أغلبها أبيض أو رمادي بدون ألوان بشرة */
+ if((f.white>.42&&f.skin<.06)||(f.grey>.8&&f.skin<.04))return;L.push({cv:cv,f:f,a:w*h});});
+ /* إذا وُجدت صورة فيها وجه (ألوان بشرة) نختار منها فقط، وإلا نرجع للأكبر */
+ var face=L.filter(function(x){return x.f.skin>=.05;});if(face.length)L=face;
+ var best=null,bs=0;L.forEach(function(x){var sc=Math.sqrt(x.a)*(1+Math.min(x.f.skin,.4)*3)*(1-x.f.white*.5);if(sc>bs){bs=sc;best=x.cv;}});return best;}
 function extract(file,prog,lite){
  var isPdf=/pdf$/i.test(file.type)||/\.pdf$/i.test(file.name);
  if(!isPdf){return new Promise(function(ok,no){var im=new Image();im.onload=function(){var cv=document.createElement('canvas');cv.width=im.naturalWidth;cv.height=im.naturalHeight;cv.getContext('2d').drawImage(im,0,0);ok(cv);};im.onerror=no;im.src=URL.createObjectURL(file);}).then(function(cv){prog('🔎 قراءة الصورة (OCR)…');return ocr(cv,function(p){prog('🔎 قراءة الصورة (OCR) '+p+'%');}).then(function(txt){return {text:txt,pages:[cv],photo:detectPhoto(cv),ocr:1};});});}
