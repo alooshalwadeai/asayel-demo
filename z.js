@@ -157,7 +157,7 @@ function viewer(i,cu){var c=cand(i);if(!c)return;var pages=pagesOf(c,cu);var ov=
 function closeV(){var ov=document.getElementById('xcvv');if(ov)ov.classList.remove('show');document.documentElement.classList.remove('xcvopen');try{if(document.fullscreenElement)document.exitFullscreen();}catch(e){}}
 function dl(url,name){var a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){a.remove();},100);}
 function saveCV(i,cu){var c=cand(i);if(!c)return;var nm='CV-'+(cu?'Asayel-':'')+(c.n||'worker').replace(/[^\w؀-ۿ]+/g,'-');
- if(!cu&&c.cvBlob){dl(URL.createObjectURL(c.cvBlob),c.cvName||nm+'.pdf');return;}
+ if(!cu&&c.cvBlob){dl(URL.createObjectURL(c.cvBlob),c.cvName||nm+'.pdf');return;}if(!cu&&c.cvFileUrl){window.open(c.cvFileUrl,'_blank','noopener');return;}
  load(JSPDF).then(function(){var J=window.jspdf.jsPDF,d=new J({unit:'pt',format:'a4'});pagesOf(c,cu).forEach(function(p,k){if(k)d.addPage();var w=595.28,h=w*p.h/p.w;d.addImage(p.u,'JPEG',0,0,w,Math.min(h,841.89));});d.save(nm+'.pdf');}).catch(function(){dl(pagesOf(c,cu)[0].u,nm+'.jpg');});}
 /* sample CV PDF (fictional) */
 function samplePdf(){return load(JSPDF).then(function(){var J=window.jspdf.jsPDF,d=new J({unit:'pt',format:'a4'});var W=595.28;
@@ -199,7 +199,7 @@ function crop(){var box=document.querySelector('#xdr .zcrop');if(!box||!CUR||!CU
 function collect(){var o={};['zn','zpp','zco','zage','zex','zlg','zsk','zsal','zrel','zag'].forEach(function(k){var e=document.getElementById(k);if(e)o[k]=e.value;});return o;}
 function restore(o){for(var k in o){var e=document.getElementById(k);if(e)e.value=o[k];}}
 function save2(){var f=collect(),u=U();if(!f.zn.trim()){st('⚠ اكتب اسم العاملة');document.getElementById('zn').focus();return;}if(f.zco.indexOf('اختر')>=0){st('⚠ اختر الجنسية');document.getElementById('zco').focus();return;}
- var c={n:f.zn.trim(),co:f.zco,age:+f.zage||0,ex:+f.zex||0,lg:f.zlg||'—',sk:f.zsk||'—',sal:+f.zsal||0,ag:f.zag||'—',s:'متاحة',pp:f.zpp.trim().toUpperCase(),rel:f.zrel,ph:CUR&&CUR.photo||'',cvPages:(CUR&&CUR.pages||[]).map(function(p){return po(p);}),cvBlob:CUR&&CUR.file||null,cvName:CUR&&CUR.file&&CUR.file.name||''};
+ var c={n:f.zn.trim(),co:f.zco,age:+f.zage||0,ex:+f.zex||0,lg:f.zlg||'—',sk:f.zsk||'—',sal:+f.zsal||0,ag:f.zag||'—',s:'متاحة',pp:f.zpp.trim().toUpperCase(),rel:f.zrel,ph:CUR&&CUR.photo||'',cvPages:(CUR&&CUR.pages||[]).map(function(p){return po(p);}),cvBlob:CUR&&CUR.file||null,cvName:CUR&&CUR.file&&CUR.file.name||'',fresh:1};
  u.CANDS.push(c);if(window.XP_BULKDONE)window.XP_BULKDONE(CUR&&CUR.file);try{u.log('إضافة','المرشحات','إضافة '+c.n+' من السيرة الذاتية','—',c.co+' · '+c.sal+' ر.س');}catch(e){}
  var d=document.getElementById('xdr');if(d)d.classList.remove('show');try{u.toast('✓ أُضيفت '+c.n+' مع سيرتها الذاتية');}catch(e){}try{window.XP_HOST.reopen();}catch(e){}}
 function reg(){var u=U();if(!u||!u.ACT){setTimeout(reg,60);return;}var A=u.ACT;
@@ -268,7 +268,7 @@ function report(){var b=BULK,es=Z().esc;if(!b)return '';
 function dropUI(){var U_=window.XP_U,ags=[];U_.CANDS.forEach(function(c){if(c.ag&&c.ag!=='—'&&ags.indexOf(c.ag)<0)ags.push(c.ag);});var es=Z().esc;
  return '<div class="zadd"><p class="mut">اسحب وأسقط ملفات السير الذاتية هنا (PDF أو صور) — مئات الملفات دفعة واحدة. يقرأ النظام كل سيرة ويضيفها حسب الجنسية والمكتب، ويرفض المكرّر تلقائيًا، ولا يعيد العاملات المحجوزات أو المربوطات بعقد.</p>'+
  '<label class="zf"><span>المكتب الخارجي (الوكيل) لهذه الدفعة</span><select id="zbag"><option value="">تلقائي — يُقرأ من رأس السيرة</option>'+ags.map(function(a){return '<option>'+es(a)+'</option>';}).join('')+'</select></label>'+
- '<label class="zdrop zbdrop" for="zbfile"><input id="zbfile" type="file" multiple accept="application/pdf,image/*"><b>⬇ أسقط الملفات هنا أو اضغط للاختيار</b><span class="mut sm">يمكن اختيار أكثر من 200 ملف · تُقرأ على جهازك ولا تُرفع لأي خدمة خارجية</span></label>'+
+ '<label class="zdrop zbdrop" for="zbfile"><input id="zbfile" type="file" multiple accept="application/pdf,image/*"><b>⬇ أسقط الملفات هنا أو اضغط للاختيار</b><span class="mut sm">يمكن اختيار أكثر من 200 ملف · تُقرأ على جهازك وتُحفظ في قاعدة بيانات المكتب</span></label>'+
  '<div class="zbody"></div></div>';}
 function openBulk(){window.XP_U.drawer('إسقاط السير الذاتية بالجملة',BULK&&(BULK.running||BULK.total)?'<div class="zbody">'+report()+'</div>':dropUI());}
 function start(files){files=[].slice.call(files).filter(function(f){return /pdf|image/i.test(f.type)||/\.(pdf|jpe?g|png|webp)$/i.test(f.name);});if(!files.length)return;if(BULK&&BULK.running)return;
