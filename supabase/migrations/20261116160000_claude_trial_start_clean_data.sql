@@ -1,0 +1,22 @@
+-- بداية التشغيل التجريبي (16/11/2026 حتى 01/12/2026) بطلب المستخدم: حذف كل البيانات التجريبية ليبدأ البرنامج فارغًا.
+-- نُفّذ مرة واحدة يدويًا (بيانات وليس هيكل). نسخة احتياطية من الجداول قبل الحذف في المخطط المخفي trial_backup.
+-- لا يُعاد تشغيله.
+--
+-- begin;
+-- create schema if not exists trial_backup;  -- نسخ: rec_orders, holds, booking_audit, profiles, cust_requests, agents, agent_entries,
+--                                            -- agent_entries_history, audit_log, conversations, messages, rent_bookings, rent_workers,
+--                                            -- hr_employees, hr_items, hr_bonus_events, hr_advances, site_settings
+-- delete from asayel_booking.audit; delete from asayel_booking.medical; delete from asayel_booking.rejected;
+-- delete from public.rec_orders; delete from asayel_booking.holds; delete from asayel_booking.profiles;
+-- delete from public.removed_workers; delete from public.cust_requests;
+-- delete from public.agent_entries_history; delete from public.agent_entries; delete from public.agents;
+-- delete from public.reads; delete from public.messages; delete from public.conversations;
+-- delete from public.rent_bookings; delete from public.rent_workers;
+-- delete from public.hr_items; delete from public.hr_bonus_events; delete from public.hr_advances; delete from public.hr_payroll_lines; delete from public.hr_payroll;
+-- delete from public.hr_employees where name like '%(تجريبي)%' or by_name = 'بيانات تجريبية';   -- بقي ملف «علي الوادعي» فقط
+-- update public.site_settings set value = jsonb_set(value, '{offices}', '[]') where key = 'named_cfg';
+-- update public.site_settings set value = '{}' where key = 'visa_assign';
+-- delete from public.audit_log;
+-- commit;
+-- ملفات التجربة في المخازن sreq و agentdocs حُذفت بصلاحية حذف مؤقتة للمدير ثم أُزيلت الصلاحية.
+-- بقيت كما هي: حسابات الموظفين وصلاحياتهم، الأسعار، السياسة والأسئلة، إعدادات الرواتب.
