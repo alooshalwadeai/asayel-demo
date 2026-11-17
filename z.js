@@ -134,7 +134,7 @@ function drawCV(c,cu){var W=1240,H=1754,cv=document.createElement('canvas');cv.w
  x.textAlign='center';x.direction='rtl';x.fillStyle='#8592A6';x.font='400 26px Tajawal, Arial';x.fillText(cu?'شركة أصايل المنصورة للاستقدام · نجران':'سيرة ذاتية نموذجية للعرض التجريبي · شركة أصايل المنصورة · نجران',W/2,H-70);
  return cv;}
 function po(cv,q){return {u:c2url(cv,q||.82),w:cv.width,h:cv.height};}
-function pagesOf(c,cu){if(cu)return c.cvCu||(c.cvCu=[po(drawCV(c,1),.85)]);if(c.cvPages&&c.cvPages.length)return c.cvPages;return c.cvDef||(c.cvDef=[po(drawCV(c),.85)]);}
+function pagesOf(c,cu){if(c.cvPages&&c.cvPages.length)return c.cvPages;if(cu)return c.cvCu||(c.cvCu=[po(drawCV(c,1),.85)]);return c.cvDef||(c.cvDef=[po(drawCV(c),.85)]);}
 function phImg(c){if(c.ph&&!c.phI){var im=new Image();im.onload=function(){c.phI=im;c.cvCu=null;};im.src=c.ph;}}
 function thumbOf(c){return pagesOf(c)[0].u;}
 function cand(i){return U().CANDS[i];}
