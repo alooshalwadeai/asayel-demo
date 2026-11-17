@@ -30,7 +30,7 @@
     return data;
   }
   function summary(h) {
-    return '<dl><div><dt>العاملة</dt><dd>'+esc(h.worker)+'</dd></div><div><dt>رقم الحجز</dt><dd><bdi>'+esc(h.ref)+'</bdi></dd></div><div><dt>انتهاء الحجز بتوقيت المملكة</dt><dd>'+esc(when(h.expires))+'</dd></div></dl>';
+    return '<dl><div><dt>العاملة</dt><dd>'+esc(h.worker)+'</dd></div><div><dt>رقم الحجز</dt><dd><bdi>'+esc(h.ref)+'</bdi></dd></div>'+(h.contract?'<div><dt>تأشيرة العميل</dt><dd><bdi>'+esc(h.visa||'—')+'</bdi></dd></div>':'<div><dt>انتهاء الحجز بتوقيت المملكة</dt><dd>'+esc(when(h.expires))+'</dd></div>')+'</dl>';
   }
   function button(action,text) {return '<button type="button" data-v="'+action+'">'+text+'</button>';}
   function field(staff) {
@@ -43,7 +43,7 @@
     return '';
   }
   /* مراحل متابعة الاستقدام كما يحرّكها الموظفون (rec_orders.stage) */
-  const STG=['حجز','تم السداد','العقد في مساند','الفحص الطبي','التفييز','الباركود','التذكرة','وصلت المطار','وصلت المكتب','تم التسليم'];
+  const STG=['حجز','السداد','العقد في مساند','الفحص الطبي','التفييز','الباركود','التذكرة','الوصول للمطار','الوصول للمكتب','التسليم للعميل'];
   const RCPN={delivery:'عن طريق شركة التسليم',office:'الاستلام من المكتب',sat:'الإرسال عن طريق النقل SAT'};
   function stageNote(h) {
     const st=+h.stage||0;
@@ -55,11 +55,11 @@
   function steps(h) {
     if(!h.visa||!h.paid) return '';
     const st=Math.max(1,+h.stage||1);
-    return '<ol class="av-steps" aria-label="مراحل الاستقدام">'+STG.slice(1).map((n,i)=>{const k=i+1;return '<li class="'+(k<st?'done':k===st?'now':'')+'"'+(k===st?' aria-current="step"':'')+'>'+(k<st?'✓ ':'')+n+'</li>';}).join('')+'</ol>';
+    return '<ol class="av-steps" aria-label="مراحل الاستقدام">'+STG.slice(1).map((n,i)=>{const k=i+1;return '<li class="'+(k<=st?'done':k===st+1?'now':'')+'"'+(k===st+1?' aria-current="step"':'')+'>'+(k<=st?'✓ ':'')+n+'</li>';}).join('')+'</ol>';
   }
   function status(h) {
     if(h.cancelled) return 'أُلغي الحجز';
-    if(h.visa&&h.paid) return 'مرحلة العاملة الآن: <b>'+STG[Math.max(1,+h.stage||1)]+'</b>'+stageNote(h);
+    if(h.visa&&h.paid) return (+h.stage>=9?'<b>✅ تم تسليم العاملة</b>':'مرحلة العاملة الآن: <b>'+STG[Math.min(9,(+h.stage||1)+1)]+'</b>')+stageNote(h);
     if(h.visa) return 'تم الحجز برقم التأشيرة '+esc(h.visa)+'. '+(h.added_by?'أضاف فريق أصايل الرقم إلى حجزك، ويمكنك الآن متابعة طلبك':'يمكنك متابعة طلبك من حسابك في أصايل');
     if(h.expired) return 'انتهت مهلة الحجز';
     if(h.help_at) return 'استلمنا طلب المساعدة. سيتواصل معك موظف أصايل على جوالك المنتهي بـ '+esc(h.phone.slice(-4));
