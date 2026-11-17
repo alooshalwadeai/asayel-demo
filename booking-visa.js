@@ -42,8 +42,24 @@
     if(choice==='2') return '<p>سيتواصل معك أحد موظفي شركة أصايل على جوالك المسجّل لمساعدتك في فتح حسابك الشخصي في مساند، وإرشادك خلال خطوات إصدار التأشيرة</p><p>أتعاب شركة أصايل للمساعدة: ٠ ريال<br>رسوم خدمة إصدار التأشيرة عبر مساند: ١٧٢٫٥٠ ريال، مستحقة لمنصة مساند</p>'+button('help','اطلب تواصل موظف أصايل');
     return '';
   }
+  /* مراحل متابعة الاستقدام كما يحرّكها الموظفون (rec_orders.stage) */
+  const STG=['حجز','تم السداد','العقد في مساند','الفحص الطبي','التفييز','الباركود','التذكرة','وصلت المطار','وصلت المكتب','تم التسليم'];
+  const RCPN={delivery:'عن طريق شركة التسليم',office:'الاستلام من المكتب',sat:'الإرسال عن طريق النقل SAT'};
+  function stageNote(h) {
+    const st=+h.stage||0;
+    if(st===6&&h.flight_date) return ' · موعد الرحلة '+esc(String(h.flight_date).slice(0,10))+(h.flight_city?' · مطار '+esc(h.flight_city):'');
+    if(st>=7&&st<9&&h.receipt_method) return ' · طريقة الاستلام: '+esc(RCPN[h.receipt_method]||'');
+    if(st===9) return ' · نتمنى لك تجربة موفقة';
+    return '';
+  }
+  function steps(h) {
+    if(!h.visa||!h.paid) return '';
+    const st=Math.max(1,+h.stage||1);
+    return '<ol class="av-steps" aria-label="مراحل الاستقدام">'+STG.slice(1).map((n,i)=>{const k=i+1;return '<li class="'+(k<st?'done':k===st?'now':'')+'"'+(k===st?' aria-current="step"':'')+'>'+(k<st?'✓ ':'')+n+'</li>';}).join('')+'</ol>';
+  }
   function status(h) {
     if(h.cancelled) return 'أُلغي الحجز';
+    if(h.visa&&h.paid) return 'مرحلة العاملة الآن: <b>'+STG[Math.max(1,+h.stage||1)]+'</b>'+stageNote(h);
     if(h.visa) return 'تم الحجز برقم التأشيرة '+esc(h.visa)+'. '+(h.added_by?'أضاف فريق أصايل الرقم إلى حجزك، ويمكنك الآن متابعة طلبك':'يمكنك متابعة طلبك من حسابك في أصايل');
     if(h.expired) return 'انتهت مهلة الحجز';
     if(h.help_at) return 'استلمنا طلب المساعدة. سيتواصل معك موظف أصايل على جوالك المنتهي بـ '+esc(h.phone.slice(-4));
@@ -51,7 +67,7 @@
   }
   function customerPanel(h,choice) {
     const open=!h.expired&&!h.cancelled&&!h.visa;
-    return '<h2>حجز السيرة الذاتية</h2>'+summary(h)+'<p role="status">'+status(h)+'</p>'+
+    return '<h2>حجز السيرة الذاتية</h2>'+summary(h)+'<p role="status" class="av-status">'+status(h)+'</p>'+steps(h)+
       (h.visa?'<p>الربط في مساند · '+(h.linked_at?'تم تأكيد الربط':'بانتظار تأكيد الموظف')+'</p>':'')+
       (h.help_at?'<p>حالة طلب المساعدة · '+(h.visa?'تمت إضافة رقم التأشيرة':'تم استلام الطلب')+'</p>':'')+
       (open?(h.help_at?button('0','إضافة رقم التأشيرة'):'<h3>هل لديك رقم التأشيرة؟</h3><div class="av-choices">'+choices.map((label,i)=>'<button type="button" data-v="'+i+'" aria-pressed="'+(String(i)===choice)+'">'+label+'</button>').join('')+'</div>')+'<div class="av-detail">'+details(choice)+'</div>':'');

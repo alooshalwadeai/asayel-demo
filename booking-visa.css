@@ -3,3 +3,23 @@
 #app .rcd[hidden],#app .av-panel[hidden]{display:none}
 
 #app [data-act="rmycancel"][hidden]{display:none}
+
+/* حساب العميل: صندوق الحجز بألوان بوابة العملاء */
+#app .av-panel[data-mode="customer"]{background:#0E2747;color:#E6EEF8;border-color:rgba(255,255,255,.1);border-radius:16px}
+#app .av-panel[data-mode="customer"] h2,#app .av-panel[data-mode="customer"] h3,#app .av-panel[data-mode="customer"] h4{color:#fff}
+#app .av-panel[data-mode="customer"] dl div{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}
+#app .av-panel[data-mode="customer"] dt{color:#9FB3CC}
+#app .av-panel[data-mode="customer"] dd{color:#fff}
+#app .av-panel[data-mode="customer"] p{color:#C9D6E6}
+#app .av-panel[data-mode="customer"] .av-status{background:rgba(61,139,255,.14);border-inline-start:4px solid #3D8BFF;border-radius:10px;padding:10px 14px;color:#E6EEF8}
+#app .av-panel[data-mode="customer"] .av-status b{color:#fff}
+#app .av-panel[data-mode="customer"] button,#app .av-panel[data-mode="customer"] .av-actions a{background:#3D8BFF;border-color:#3D8BFF;color:#fff;border-radius:11px}
+#app .av-panel[data-mode="customer"] .av-choices button{background:#0A2140;border-color:rgba(255,255,255,.18);color:#E6EEF8}
+#app .av-panel[data-mode="customer"] .av-choices button[aria-pressed=true]{background:rgba(61,139,255,.2);outline-color:#3D8BFF}
+#app .av-panel[data-mode="customer"] input[name=number]{background:#0A2140;border-color:rgba(255,255,255,.18);color:#fff}
+#app .av-panel[data-mode="customer"] .av-detail:not(:empty),#app .av-panel[data-mode="customer"] article{border-top-color:rgba(255,255,255,.1)}
+#app .av-panel[data-mode="customer"] .av-msg{color:#FF9B8A}
+.av-steps{list-style:none;margin:10px 0 4px;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.av-steps li{font-size:12.5px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.06);color:#9FB3CC;border:1px solid rgba(255,255,255,.1)}
+.av-steps li.done{background:rgba(52,199,123,.14);color:#7FE0AE;border-color:rgba(52,199,123,.3)}
+.av-steps li.now{background:#3D8BFF;color:#fff;border-color:#3D8BFF;font-weight:700}
