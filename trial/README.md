@@ -5,3 +5,5 @@
 - الرابط القديم `asayel-demo.vercel.app` رجع كما كان (بدون z23)، والرابطان يستخدمان نفس قاعدة Supabase.
 - مشروع `asayel-mansoura` أُنشئ بالخطأ قبل اختيار الاسم وهو موقوف (paused).
 - تذكير انتهاء التجربة مجدول يوم 29/11/2026.
+- **طريقة النشر (من 17/11/2026):** فرع `deploy/trial` = `main` مع `trial/p.js` مكان `p.js`، ويُنشر منه مشروع asail-almansora (gitSource). النشر السابق بالملفات كان ناقصًا (r.js وbooking-*.js وindex.html قديم)، فظهرت صفحة دخول العملاء القديمة (زر نفاذ، ألوان مختلفة، و«تسجيل جديد» لا يعمل).
+- عند أي تحديث: `git checkout -B deploy/trial origin/main && cp trial/p.js p.js && git commit -am ... && git push -f origin deploy/trial` ثم نشر asail-almansora من هذا الفرع.
