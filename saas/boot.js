@@ -42,7 +42,7 @@
   function rw(t) {
     return t.split(LIVE).join(STG).split(LK).join(SK).split('window.XP_TRIAL').join('(window.XP_TRIAL||window.XP_CLEAN)')
       .split('/storage/v1/object/public/cvs/').join('/storage/v1/object/public/cvs/tenants/' + TID + '/')
-      .split('شركة أصايل المنصورة للاستقدام').join(NAME).split('شركة أصايل المنصورة').join(NAME).split('أصايل المنصورة').join(NAME);
+      .split('شركة أصايل المنصورة للاستقدام').join(NAME).split('مكتب أصايل المنصورة للاستقدام').join(NAME).split('أصايل المنصورة للاستقدام').join(NAME).split('مكتب أصايل المنصورة').join(NAME).split('شركة أصايل المنصورة').join(NAME).split('أصايل المنصورة').join(NAME).split('مكتب مكتب').join('مكتب').split('للاستقدام للاستقدام').join('للاستقدام');
   }
   window.XP_SAAS.rw = rw;
   try {

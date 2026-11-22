@@ -20,7 +20,7 @@
   function guard() {
     var h = hash();
     if (CUST_HIDE[h]) { location.replace('#/' + CUST_HIDE[h]); return; }
-    if (HIDE.indexOf(h) >= 0 && isStaff() && document.querySelector('#app nav.xn')) location.replace('#/' + GO);
+    if (HIDE.indexOf(h) >= 0 && isStaff()) location.replace('#/' + GO);
   }
   window.addEventListener('hashchange', guard);
 
