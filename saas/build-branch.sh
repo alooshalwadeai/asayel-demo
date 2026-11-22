@@ -12,7 +12,8 @@ cp saas/preview/index.html isolation.html
 python3 - <<'PY'
 s = open('p.js').read()
 end = s.index("\ntry{")
-s = s[:end] + "L('saas/z25.js?v=" + __import__('hashlib').sha1(open('saas/z25.js','rb').read()).hexdigest()[:10] + "');" + s[end:]
+hv = lambda f: __import__('hashlib').sha1(open(f,'rb').read()).hexdigest()[:10]
+s = s[:end] + "L('saas/z25.js?v=" + hv('saas/z25.js') + "');L('saas/z26.js?v=" + hv('saas/z26.js') + "');" + s[end:]
 open('p.js', 'w').write(s)
 h = open('index.html').read()
 i = h.index('<script')

@@ -21,6 +21,7 @@
     throw new Error('office not found');
   }
   var TID = T.id, NAME = T.name || '';
+  window.XP_CLEAN = 1;   /* المكتب يبدأ فارغًا: بدون السير والبيانات التجريبية المدمجة */
   window.XP_SAAS = { slug: slug, tid: TID, name: NAME, office: T, url: STG, key: SK, devKey: 'saas-dev-' + slug };
   function dev() { try { return localStorage.getItem('saas-dev-' + slug) || ''; } catch (e) { return ''; } }
   document.title = NAME;
@@ -39,7 +40,7 @@
 
   /* نصوص البرنامج: نفس الملفات، موجّهة لقاعدة المكاتب، وباسم المكتب */
   function rw(t) {
-    return t.split(LIVE).join(STG).split(LK).join(SK)
+    return t.split(LIVE).join(STG).split(LK).join(SK).split('window.XP_TRIAL').join('(window.XP_TRIAL||window.XP_CLEAN)')
       .split('/storage/v1/object/public/cvs/').join('/storage/v1/object/public/cvs/tenants/' + TID + '/')
       .split('شركة أصايل المنصورة للاستقدام').join(NAME).split('شركة أصايل المنصورة').join(NAME).split('أصايل المنصورة').join(NAME);
   }
