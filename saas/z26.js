@@ -29,12 +29,8 @@
   function names() {
     var N = (window.XP_SAAS || {}).name; if (!N) return;
     if (/أصايل/.test(document.title)) document.title = document.title.replace(/شركة أصايل المنصورة|أصايل المنصورة/g, N);
-    var w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT), n;
-    while ((n = w.nextNode())) {
-      var v = n.nodeValue;
-      if (v.indexOf('أصايل') >= 0 && n.parentElement && n.parentElement.tagName !== 'SCRIPT' && n.parentElement.tagName !== 'STYLE') n.nodeValue = v.replace(/شركة أصايل المنصورة للاستقدام|مكتب أصايل المنصورة للاستقدام|شركة أصايل المنصورة|مكتب أصايل المنصورة|أصايل المنصورة/g, N);
-      else if (v.indexOf('يرفعه المطوّر') >= 0 && !/^#\/Landing\b/.test(location.hash)) { location.replace('#/Landing'); return; }
-    }
+    var app = document.getElementById('app');
+    if (app && app.textContent.indexOf('يرفعه المطوّر') >= 0 && !/^#\/Landing\b/.test(location.hash)) location.replace('#/Landing');
   }
   function tags() {
     var app = document.getElementById('app'); if (!app) return;
