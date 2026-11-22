@@ -56,3 +56,9 @@
 - الرابط: https://asayel-saas-preview.vercel.app
 - مشروع Vercel: `asayel-saas-preview`، والمصدر في `saas/preview/index.html`.
 - تتصل بالمشروع المنفصل فقط. حسابات الاختبار وهمية (`@test-office.example`) وموجودة في المشروع المنفصل وحده.
+
+## المرحلة (٢) — التسجيل والدخول (22/11/2026)
+- الرابط: https://asayel-saas-preview.vercel.app (يفتح «سجّل مكتبك»)، وكل مكتب على `/o/<رابط-المكتب>/`.
+- طريقة الدخول (اختيار المستخدم): إيميل المكتب وكلمة مروره لربط أي جهاز جديد، ثم كل موظف يختار اسمه ويكتب رمزه.
+- فرع النشر `deploy/saas` يُبنى بـ `saas/build-branch.sh` من آخر main، فأي تحديث على برنامج أصايل يصل لنسخة المكاتب بإعادة البناء.
+- الترحيلات: saas_03 (tenant_signup / tenant_device_link / staff_logins)، saas_04 (auth_uid لدور التطبيق)، saas_05 (بيانات التجربة).
