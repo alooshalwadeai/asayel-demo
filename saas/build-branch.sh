@@ -3,7 +3,7 @@
 set -e
 cd "$(git rev-parse --show-toplevel)"
 SRC=claude/saas-stage1
-git fetch -q origin
+git fetch -q origin main claude/saas-stage1:refs/remotes/origin/claude/saas-stage1
 git checkout -q -B deploy/saas origin/main
 git checkout -q origin/$SRC -- saas
 cp saas/vercel.json vercel.json

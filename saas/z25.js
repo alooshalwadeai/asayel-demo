@@ -22,6 +22,13 @@
     if (need) { if (form) form.style.display = 'none'; if (!card) box.insertAdjacentHTML('beforeend', linkCard(dev() ? 'ربط الجهاز انتهى أو أُلغي · اربطه من جديد' : '')); }
     else { if (form) form.style.display = ''; if (card) card.remove(); }
     if (!checked && sel) setTimeout(function () { checked = 1; }, 3500);
+    /* قائمة الموظفين وصلت لكن الشاشة ما زالت على الأسماء الافتراضية: إعادة تحميل مرة واحدة */
+    var L = SA.logins;
+    if (sel && L && L.length && dev()) {
+      var want = L.map(function (x) { return x.name; }).join('|'), have = [].map.call(sel.options, function (o) { return o.textContent; }).join('|');
+      if (want !== have) { var k = 'z25r-' + SA.slug; try { if (!sessionStorage.getItem(k)) { sessionStorage.setItem(k, '1'); location.reload(); } } catch (e) { } }
+      else try { sessionStorage.removeItem('z25r-' + SA.slug); } catch (e) { }
+    }
   }
   document.addEventListener('submit', function (e) {
     if (!e.target || e.target.id !== 'z25f') return; e.preventDefault(); e.stopImmediatePropagation();

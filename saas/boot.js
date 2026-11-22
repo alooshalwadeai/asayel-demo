@@ -71,6 +71,8 @@
       } catch (e) { }
     }
     if (typeof input !== 'string') input = new Request(url, input); else input = url;
-    return F.call(this, input, init);
+    var pr = F.call(this, input, init);
+    if (/\/rest\/v1\/rpc\/staff_logins$/.test(url)) pr.then(function (res) { res.clone().json().then(function (d) { if (Array.isArray(d)) window.XP_SAAS.logins = d; }, function () { }); }, function () { });
+    return pr;
   };
 })();
