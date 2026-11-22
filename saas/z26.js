@@ -25,13 +25,24 @@
   window.addEventListener('hashchange', guard);
 
   function counts() { document.querySelectorAll('nav.xn details.xg').forEach(function (g) { var sm = g.querySelector('summary small'); if (!sm) return; var n = [].filter.call(g.querySelectorAll('a'), function (x) { return getComputedStyle(x).display !== 'none'; }).length; if (sm.textContent !== String(n)) sm.textContent = n; }); }
+  /* اسم المكتب بدل اسم أصايل في الصفحات المضغوطة، والإعلان الافتتاحي التجريبي يتحول للواجهة */
+  function names() {
+    var N = (window.XP_SAAS || {}).name; if (!N) return;
+    if (/أصايل/.test(document.title)) document.title = document.title.replace(/شركة أصايل المنصورة|أصايل المنصورة/g, N);
+    var w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT), n;
+    while ((n = w.nextNode())) {
+      var v = n.nodeValue;
+      if (v.indexOf('أصايل') >= 0 && n.parentElement && n.parentElement.tagName !== 'SCRIPT' && n.parentElement.tagName !== 'STYLE') n.nodeValue = v.replace(/شركة أصايل المنصورة للاستقدام|مكتب أصايل المنصورة للاستقدام|شركة أصايل المنصورة|مكتب أصايل المنصورة|أصايل المنصورة/g, N);
+      else if (v.indexOf('يرفعه المطوّر') >= 0 && !/^#\/Landing\b/.test(location.hash)) { location.replace('#/Landing'); return; }
+    }
+  }
   function tags() {
     var app = document.getElementById('app'); if (!app) return;
     var w = document.createTreeWalker(app, NodeFilter.SHOW_TEXT), n;
     while ((n = w.nextNode())) if (/بيانات تجريبية|أرقام تجريبية|للتجربة:/.test(n.nodeValue) && n.parentElement && n.parentElement.children.length === 0) n.parentElement.classList.add('z26h');
   }
   var pend = 0;
-  function run() { pend = 0; try { guard(); counts(); tags(); } catch (e) { } }
+  function run() { pend = 0; try { guard(); names(); counts(); tags(); } catch (e) { } }
   new MutationObserver(function () { if (!pend) { pend = 1; requestAnimationFrame(run); } }).observe(document.documentElement, { childList: true, subtree: true });
   run();
 
