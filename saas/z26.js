@@ -28,7 +28,9 @@
   /* اسم المكتب بدل اسم أصايل في الصفحات المضغوطة، والإعلان الافتتاحي التجريبي يتحول للواجهة */
   function names() {
     var N = (window.XP_SAAS || {}).name; if (!N) return;
-    if (/أصايل/.test(document.title)) document.title = document.title.replace(/شركة أصايل المنصورة|أصايل المنصورة/g, N);
+    /* الاسم مقسوم عمدًا حتى لا يغيّره boot.js عند تحميل هذا الملف */
+    var A = 'أصا' + 'يل', re = new RegExp('(?:شركة |مكتب )?' + A + ' المنصورة(?: للاستقدام)?', 'g');
+    if (document.title.indexOf(A) >= 0) { var t = document.title.replace(re, N); if (t !== document.title) document.title = t; }
     var app = document.getElementById('app');
     if (app && app.textContent.indexOf('يرفعه المطوّر') >= 0 && !/^#\/Landing\b/.test(location.hash)) location.replace('#/Landing');
   }
