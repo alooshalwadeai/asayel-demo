@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>معاينة الفصل بين المكاتب</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F4F7FB;--card:#fff;--ink:#0B1F3A;--mut:#5B6B82;--line:#E2E8F0;--blue:#1E5BB8;--blue2:#E8F0FC;--ok:#0F7B4B;--okb:#E3F5EC;--bad:#B42318;--badb:#FDECEA;--warn:#8A5A00;--warnb:#FFF4DB}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 Tajawal,system-ui,sans-serif}
+.wrap{max-width:880px;margin:0 auto;padding:20px 16px 40px}
+header{background:linear-gradient(135deg,#0B1F3A,#1E5BB8);color:#fff;border-radius:20px;padding:22px 20px;margin-bottom:18px}
+header h1{margin:0 0 4px;font-size:22px;font-weight:800}header p{margin:0;opacity:.85;font-size:14.5px}
+.tag{display:inline-block;background:#ffffff26;border-radius:99px;padding:2px 12px;font-size:12.5px;margin-bottom:8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px}
+h2{font-size:17px;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:12px 14px;font-weight:700;text-align:right}
+.who{background:var(--blue2);color:var(--blue);display:flex;flex-direction:column;gap:2px;border:2px solid transparent}
+.who small{font-weight:400;color:var(--mut);font-size:13px}
+.who.on{border-color:var(--blue);background:#fff}
+.go{background:var(--blue);color:#fff;width:100%;text-align:center;font-size:16.5px;margin-top:4px}
+.go:disabled{opacity:.5;cursor:wait}
+.now{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--warnb);color:var(--warn);border-radius:12px;padding:10px 14px;font-weight:700;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:15px}td,th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right}th{color:var(--mut);font-weight:500;width:42%}
+.res{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+.res li{border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start}
+.res li.ok{background:var(--okb)}.res li.bad{background:var(--badb)}
+.res b{display:block}.res span{font-size:13.5px;color:var(--mut)}
+.ic{font-size:18px;line-height:1.4}
+.sum{font-weight:800;font-size:17px;padding:12px;border-radius:12px;text-align:center;margin-top:10px}
+.sum.ok{background:var(--ok);color:#fff}.sum.bad{background:var(--bad);color:#fff}
+.note{font-size:13.5px;color:var(--mut)}
+footer{text-align:center;color:var(--mut);font-size:13px;margin-top:24px}
+.hide{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="tag">المرحلة (١) · قاعدة البيانات والحماية · نسخة منفصلة</span>
+  <h1>معاينة الفصل بين المكاتب</h1>
+  <p>اختر مكانك، وشوف وش يظهر لك. بعدها جرّب الوصول لبيانات المكتب الثاني بنفسك. هذي النسخة منفصلة تمامًا عن البرنامج الحالي، وكل البيانات فيها تجريبية.</p>
+</header>
+
+<div class="card">
+  <h2>١) ادخل بصفة…</h2>
+  <div class="grid" id="whos">
+    <button class="who" data-k="ma">مدير مكتب تجريبي (أ)<small>موظف مسجّل في مكتب (أ)</small></button>
+    <button class="who" data-k="mb">مدير مكتب تجريبي (ب)<small>موظف مسجّل في مكتب (ب)</small></button>
+    <button class="who" data-k="va">زائر موقع مكتب (أ)<small>عميل بدون حساب</small></button>
+    <button class="who" data-k="vb">زائر موقع مكتب (ب)<small>عميل بدون حساب</small></button>
+  </div>
+</div>
+
+<div class="card hide" id="view">
+  <div class="now" id="now"></div>
+  <h2>٢) هذا اللي تشوفه</h2>
+  <table id="data"></table>
+  <p class="note" id="vnote"></p>
+</div>
+
+<div class="card hide" id="attack">
+  <h2>٣) جرّب توصل لبيانات المكتب الثاني</h2>
+  <p class="note" id="anote"></p>
+  <button class="go" id="go">ابدأ المحاولة</button>
+  <ul class="res" id="res" style="margin-top:12px"></ul>
+  <div id="sum"></div>
+</div>
+
+<footer>تصميم البرنامج / علي صالح الوادعي</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+var URL_ = 'https://injumfjfjchpshtuepqe.supabase.co', KEY = 'sb_publishable_yks4e0oOz1KQnD9pkVltAw_Ekge7ZQ2';
+var OFF = { a: { id: 101, slug: 'test-office-a', name: 'مكتب تجريبي (أ)', order: 'aaaaaaaa-1111-4000-8000-000000000001', mgr: 'aaaaaaaa-0000-4000-8000-000000000001', email: 'mgr-a@test-office.example', pw: 'Test-A-2026' },
+            b: { id: 102, slug: 'test-office-b', name: 'مكتب تجريبي (ب)', order: 'bbbbbbbb-1111-4000-8000-000000000001', mgr: 'bbbbbbbb-0000-4000-8000-000000000001', email: 'mgr-b@test-office.example', pw: 'Test-B-2026' } };
+var cur = null, sb = null;
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function client(headerSlug) {
+  return supabase.createClient(URL_, KEY, { auth: { persistSession: false, autoRefreshToken: false }, global: { headers: headerSlug ? { 'x-tenant': headerSlug } : {} } });
+}
+document.querySelectorAll('.who').forEach(function (b) { b.onclick = function () { pick(b.dataset.k); }; });
+
+async function pick(k) {
+  document.querySelectorAll('.who').forEach(function (x) { x.classList.toggle('on', x.dataset.k === k); });
+  var staff = k[0] === 'm', me = OFF[k[1]], other = OFF[k[1] === 'a' ? 'b' : 'a'];
+  cur = { staff: staff, me: me, other: other };
+  $('view').classList.remove('hide'); $('attack').classList.remove('hide');
+  $('res').innerHTML = ''; $('sum').innerHTML = '';
+  $('data').innerHTML = '<tr><td>جارٍ التحميل…</td></tr>';
+  if (staff) {
+    // متعمَّد: الموظف يرسل اسم المكتب الثاني في الطلب، لنثبت أن النظام يتجاهله ويعتمد على حسابه
+    sb = client(other.slug);
+    var r = await sb.auth.signInWithPassword({ email: me.email, password: me.pw });
+    if (r.error) { $('data').innerHTML = '<tr><td>تعذّر الدخول: ' + esc(r.error.message) + '</td></tr>'; return; }
+    $('now').innerHTML = '👤 دخلت كمدير ' + esc(me.name) + ' <span style="font-weight:400">· والمتصفح يرسل عمدًا اسم «' + esc(other.name) + '» ليحاول يغيّر المكتب</span>';
+  } else {
+    sb = client(me.slug);
+    $('now').innerHTML = '🌐 أنت زائر في موقع ' + esc(me.name) + ' (بدون حساب)';
+  }
+  var t = await sb.rpc('tenant_public');
+  var orders = staff ? await sb.from('rec_orders').select('cust_name,worker_name,tenant_id') : null;
+  var cvs = await sb.rpc('cvs_public');
+  var ag = staff ? await sb.from('agents').select('name,tenant_id') : null;
+  var st = staff ? await sb.from('staff').select('name,tenant_id') : null;
+  var pr = await sb.from('site_settings').select('value,tenant_id').eq('key', 'rec_prices');
+  var price = pr.data && pr.data[0] ? pr.data[0].value.nats[0].price : '—';
+  var rows = [['المكتب اللي النظام شايفك فيه', (t.data && t.data.name) || '—']];
+  if (staff) {
+    rows.push(['طلبات الاستقدام', (orders.data || []).map(function (o) { return o.cust_name + ' (' + o.worker_name + ')'; }).join('، ') || 'لا شيء']);
+    rows.push(['الموظفون', (st.data || []).map(function (o) { return o.name; }).join('، ')]);
+    rows.push(['الوكلاء الخارجيون', (ag.data || []).length + ' وكيل']);
+  }
+  rows.push(['السير الذاتية المعروضة', (cvs.data || []).map(function (c) { return c.n; }).join('، ') || 'لا شيء']);
+  rows.push(['سعر الاستقدام من كينيا', price + ' ريال']);
+  $('data').innerHTML = rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('');
+  $('vnote').textContent = 'المكتب (أ) سعره 1000 ريال، والمكتب (ب) سعره 2000. كل مكتب يشوف بياناته وأسعاره فقط.';
+  $('anote').textContent = staff
+    ? 'سنحاول نقرأ ونعدّل بيانات ' + other.name + ' ونرفع ملفات في مجلده ونغيّر رمز مديره، مباشرة على قاعدة البيانات وبدون المرور بالواجهة. المحاولات مرفوضة، فما يتغيّر شيء.'
+    : 'سنحاول كزائر نقرأ جداول المكتب مباشرة ونرفع ملفًا في مجلد ' + other.name + '.';
+}
+
+$('go').onclick = async function () {
+  if (!cur) return;
+  var btn = this; btn.disabled = true; $('res').innerHTML = ''; $('sum').innerHTML = '';
+  var o = cur.other, out = [], ok = true;
+  function add(title, blocked, detail) { if (!blocked) ok = false; out.push({ t: title, b: blocked, d: detail }); render(); }
+  function render() { $('res').innerHTML = out.map(function (x) { return '<li class="' + (x.b ? 'ok' : 'bad') + '"><span class="ic">' + (x.b ? '🛡️' : '⚠️') + '</span><div><b>' + esc(x.t) + '</b><span>' + esc(x.d) + '</span></div></li>'; }).join(''); }
+  if (cur.staff) {
+    var a = await sb.from('rec_orders').select('cust_name').eq('id', o.order);
+    add('قراءة طلب عميل في ' + o.name + ' برقمه', !(a.data && a.data.length), a.data && a.data.length ? 'ظهر الطلب!' : 'رجعت 0 نتائج، كأن الطلب غير موجود');
+    var u = await sb.from('rec_orders').update({ adj_note: 'محاولة تعديل' }).eq('id', o.order).select('id');
+    add('تعديل طلب في ' + o.name, !(u.data && u.data.length), u.data && u.data.length ? 'تعدّل!' : 'ما تعدّل أي صف');
+    var d = await sb.from('cvs').delete().eq('tenant_id', o.id).select('id');
+    add('حذف سير ' + o.name, !(d.data && d.data.length), d.data && d.data.length ? 'انحذفت!' : 'ما انحذف شيء');
+    var i = await sb.from('cvs').insert({ tenant_id: o.id, n: 'سيرة مزروعة', co: 'كينيا' }).select('id');
+    add('إضافة سيرة داخل ' + o.name, !!i.error, i.error ? 'مرفوض من قاعدة البيانات' : 'انضافت!');
+    var s = await sb.rpc('rec_stage', { p_id: o.order, p_to: 2 });
+    add('نقل طلب في ' + o.name + ' للمرحلة التالية', !!s.error, s.error ? 'مرفوض: ' + s.error.message : 'انتقل!');
+    var p = await sb.rpc('staff_set_password', { p_id: o.mgr, p_password: 'hacked-123' });
+    add('تغيير الرمز السري لمدير ' + o.name, !!p.error, p.error ? 'مرفوض: ' + p.error.message : 'تغيّر!');
+    var t = await sb.from('tenants').select('name').eq('id', o.id);
+    add('قراءة بيانات اشتراك ' + o.name, !(t.data && t.data.length), t.data && t.data.length ? 'ظهرت!' : 'رجعت 0 نتائج');
+  } else {
+    var r1 = await sb.from('rec_orders').select('cust_name');
+    add('قراءة جدول طلبات الاستقدام مباشرة', !(r1.data && r1.data.length), r1.data && r1.data.length ? 'ظهرت طلبات!' : 'رجعت 0 نتائج');
+    var r2 = await sb.from('staff').select('name');
+    add('قراءة أسماء الموظفين', !(r2.data && r2.data.length), r2.data && r2.data.length ? 'ظهرت!' : 'رجعت 0 نتائج');
+  }
+  var up = await sb.storage.from('cvs').upload('tenants/' + o.id + '/preview-test/' + Date.now() + '.txt', new Blob(['test'], { type: 'text/plain' }));
+  add('رفع ملف داخل مجلد ' + o.name, !!up.error, up.error ? 'مرفوض' : 'انرفع!');
+  $('sum').innerHTML = '<div class="sum ' + (ok ? 'ok' : 'bad') + '">' + (ok ? '✓ انحمت كل المحاولات، وبيانات ' + o.name + ' معزولة تمامًا' : 'تنبيه: محاولة نجحت، راجع المطوّر') + '</div>';
+  btn.disabled = false;
+};
+</script>
+</body>
+</html>

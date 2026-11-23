@@ -1,0 +1,9 @@
+{
+  "redirects": [{ "source": "/", "destination": "/signup.html", "permanent": false }],
+  "rewrites": [
+    { "source": "/o/:slug", "destination": "/index.html" },
+    { "source": "/o/:slug/", "destination": "/index.html" },
+    { "source": "/o/:slug/:path+", "destination": "/:path+" }
+  ],
+  "headers": [{ "source": "/(.*)\\.(js|txt|html)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }] }]
+}
