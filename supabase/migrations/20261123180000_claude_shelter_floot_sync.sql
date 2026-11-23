@@ -2,6 +2,7 @@
 -- مهمة مجدولة في Floot (helpers/syncToAsayel، كل 24 ساعة) تقرأ بياناته وترسل الجديد هنا. لا تعدّل شيئًا في Floot.
 -- صفحات الإيواء في برنامجنا للعرض والتقارير والبحث والرد الآلي فقط حتى التحويل الكامل.
 -- المرسل حساب خاص floot-sync@sync.asayel.app (ليس موظفًا ولا يظهر في القوائم). رمزه محفوظ في أسرار Floot فقط (ASAYEL_SYNC_PASSWORD).
+-- ملاحظة: Floot (kysely CamelCasePlugin) يحوّل أسماء الحقول إلى camelCase، فالدالة تقبل الصيغتين.
 -- الحساب نفسه أُنشئ خارج هذا الملف حتى لا يُحفظ أي رمز في المستودع.
 
 create table if not exists private.shelter_sync_log (at timestamptz primary key default now(), result jsonb);
@@ -23,22 +24,24 @@ begin
   if auth.uid() is distinct from private.sh_sync_uid() then raise exception 'denied'; end if;
   for x in select * from jsonb_array_elements(coalesce(p_res, '[]')) loop
     insert into public.shelter_residents(version, record, created_by_name, created_at, updated_at, visit_started_at, archived_at, archive_kind, deleted_at, floot_slot)
-    values ((x->>'version')::int, x->'record', x->>'created_by_name', coalesce((x->>'updated_at')::timestamptz, now()), coalesce((x->>'updated_at')::timestamptz, now()),
-      coalesce((x->>'visit_started_at')::timestamptz, (x->>'updated_at')::timestamptz, now()), (x->>'archived_at')::timestamptz, x->>'archive_kind', (x->>'deleted_at')::timestamptz, (x->>'slot')::int)
+    values ((x->>'version')::int, x->'record', coalesce(x->>'created_by_name', x->>'createdByName'), coalesce((coalesce(x->>'updated_at', x->>'updatedAt'))::timestamptz, now()), coalesce((coalesce(x->>'updated_at', x->>'updatedAt'))::timestamptz, now()),
+      coalesce((coalesce(x->>'visit_started_at', x->>'visitStartedAt'))::timestamptz, (coalesce(x->>'updated_at', x->>'updatedAt'))::timestamptz, now()), (coalesce(x->>'archived_at', x->>'archivedAt'))::timestamptz, coalesce(x->>'archive_kind', x->>'archiveKind'), (coalesce(x->>'deleted_at', x->>'deletedAt'))::timestamptz, (x->>'slot')::int)
     on conflict (floot_slot) do update set version = excluded.version, record = excluded.record, created_by_name = excluded.created_by_name, updated_at = excluded.updated_at,
       visit_started_at = excluded.visit_started_at, archived_at = excluded.archived_at, archive_kind = excluded.archive_kind, deleted_at = excluded.deleted_at
-    where (public.shelter_residents.record, public.shelter_residents.archived_at, public.shelter_residents.archive_kind, public.shelter_residents.deleted_at, public.shelter_residents.version)
-      is distinct from (excluded.record, excluded.archived_at, excluded.archive_kind, excluded.deleted_at, excluded.version);
+    where (public.shelter_residents.record, public.shelter_residents.archived_at, public.shelter_residents.archive_kind, public.shelter_residents.deleted_at, public.shelter_residents.version, public.shelter_residents.visit_started_at, public.shelter_residents.created_by_name, public.shelter_residents.updated_at)
+      is distinct from (excluded.record, excluded.archived_at, excluded.archive_kind, excluded.deleted_at, excluded.version, excluded.visit_started_at, excluded.created_by_name, excluded.updated_at);
     if found then nr := nr + 1; end if;
   end loop;
   for x in select * from jsonb_array_elements(coalesce(p_wa, '[]')) loop
-    insert into public.shelter_legacy_warranty select * from jsonb_populate_record(null::public.shelter_legacy_warranty, x) on conflict (id) do nothing;
+    insert into public.shelter_legacy_warranty(id, resident_slot, source_version, passport_key, office_name, warranty_start, warranty_end, record, created_by_name, saved_at)
+    values ((x->>'id')::int, coalesce(x->>'resident_slot', x->>'residentSlot')::int, coalesce(x->>'source_version', x->>'sourceVersion')::int, coalesce(x->>'passport_key', x->>'passportKey'), coalesce(x->>'office_name', x->>'officeName'),
+      coalesce(x->>'warranty_start', x->>'warrantyStart')::date, coalesce(x->>'warranty_end', x->>'warrantyEnd')::date, x->'record', coalesce(x->>'created_by_name', x->>'createdByName'), coalesce(x->>'saved_at', x->>'savedAt')::timestamptz) on conflict (id) do nothing;
     if found then nw := nw + 1; end if;
   end loop;
   for x in select * from jsonb_array_elements(coalesce(p_att, '[]')) loop
     insert into public.shelter_attachments(id, resident_slot, name, path, content_type, size_bytes, created_by, created_at)
-    select (x->>'id')::uuid, r.slot, x->>'name', x->>'path', x->>'content_type', (x->>'size_bytes')::int, 'Floot', coalesce((x->>'created_at')::timestamptz, now())
-    from public.shelter_residents r where r.floot_slot = (x->>'resident_slot')::int
+    select (x->>'id')::uuid, r.slot, x->>'name', x->>'path', coalesce(x->>'content_type', x->>'contentType'), (coalesce(x->>'size_bytes', x->>'sizeBytes'))::int, 'Floot', coalesce((coalesce(x->>'created_at', x->>'createdAt'))::timestamptz, now())
+    from public.shelter_residents r where r.floot_slot = (coalesce(x->>'resident_slot', x->>'residentSlot'))::int
     on conflict (id) do nothing;
     if found then na := na + 1; end if;
   end loop;
