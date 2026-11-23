@@ -67,7 +67,7 @@
   }
   function customerPanel(h,choice) {
     const open=!h.expired&&!h.cancelled&&!h.visa;
-    return '<h2>حجز السيرة الذاتية</h2>'+summary(h)+'<p role="status" class="av-status">'+status(h)+'</p>'+steps(h)+
+    return '<h2>حجز السيرة الذاتية</h2>'+summary(h)+'<p role="status" class="av-status">'+status(h)+'</p>'+(h.musaned_no?'<p class="av-mno">رقم العقد في مساند: <bdi dir="ltr"><b>'+esc(h.musaned_no)+'</b></bdi></p>':'')+steps(h)+
       (h.visa?'<p>الربط في مساند · '+(h.linked_at?'تم تأكيد الربط':'بانتظار تأكيد الموظف')+'</p>':'')+
       (h.help_at?'<p>حالة طلب المساعدة · '+(h.visa?'تمت إضافة رقم التأشيرة':'تم استلام الطلب')+'</p>':'')+
       (open?(h.help_at?button('0','إضافة رقم التأشيرة'):'<h3>هل لديك رقم التأشيرة؟</h3><div class="av-choices">'+choices.map((label,i)=>'<button type="button" data-v="'+i+'" aria-pressed="'+(String(i)===choice)+'">'+label+'</button>').join('')+'</div>')+'<div class="av-detail">'+details(choice)+'</div>':'');
