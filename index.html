@@ -48,6 +48,7 @@ nav .logout{margin-top:auto;display:flex;align-items:center;min-height:40px;padd
 <div id="menu" role="navigation" aria-label="صفحات النسخة التجريبية"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <link rel="stylesheet" href="booking-visa.css?v=4"><script src="booking-visa.js?v=stage3"></script>
+<script src="/rental-soon.js?v=1"></script>
 <script src="p.js?v=recovery1"></script>
 <script>
 (function(){var x=new XMLHttpRequest();x.open('GET','x.js',false);x.send();var t=x.responseText;(window.XP_PATCH||[]).forEach(function(p){t=t.split(p[0]).join(p[1]);});var s=document.createElement('script');s.textContent=t;document.head.appendChild(s);})();
@@ -181,6 +182,14 @@ document.body.style.background = '#FBF7EF';
 XP.after(app);
 }
 function open(name) {
+if (window.asayelRentalSoon && window.asayelRentalSoon.matches()) {
+clearInterval(adTimer);
+current = 'RentSoon';
+inst = null;
+window.asayelRentalSoon.render(app);
+window.scrollTo(0, 0);
+return;
+}
 var keep = name === current ? window.scrollY : 0;
 clearInterval(adTimer);
 if (window.XP && XP.has(name)) {
